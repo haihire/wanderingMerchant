@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "떠돌이 상인 체크",
+  "version": "1.0.0",
+  "description": "로스트아크 떠돌이 상인을 크롬확장으로 쉽게 볼 수 있는 기능",
+  "action": {
+    "default_title": "떠상 알림",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["alarms", "notifications", "storage"],
+  "background": { "service_worker": "background.js" },
+  "host_permissions": ["https://api.korlark.com/*"],
+  "icons": {
+    "128": "icons/icon_128.png"
+  }
+}

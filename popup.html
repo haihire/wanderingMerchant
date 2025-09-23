@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>Merchant Watcher</title>
+    <link rel="stylesheet" href="./popup.css" />
+    <link rel="icon" href="/favicon.ico" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="header-content">
+          <div class="header-icon">⚔️</div>
+          <h1 class="header-title">아만섭</h1>
+        </div>
+
+        <button id="btnRefresh" class="refresh-btn">
+          <span class="refresh-icon">🔄</span>
+          <span class="refresh-text">갱신</span>
+        </button>
+      </div>
+      <!-- 전설 카드 알림 토글 -->
+      <div class="notify-toggle">
+        <label for="toggleNotify">전설 카드 알림</label>
+        <input id="toggleNotify" type="checkbox" />
+      </div>
+      <div class="time-section">
+        <div id="currentTime"></div>
+      </div>
+
+      <div id="list" class="card-list"></div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
