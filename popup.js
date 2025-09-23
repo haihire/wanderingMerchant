@@ -5,6 +5,7 @@ let merchantDataCache = null;
 const IS_EXT = typeof chrome !== "undefined" && chrome?.storage?.local;
 const Storage = {
   get(key, cb) {
+    // In extension context, use chrome.storage.local; otherwise fallback to localStorage
     if (IS_EXT) return chrome.storage.local.get(key, cb);
     const v = localStorage.getItem(key);
     cb({ [key]: v === null ? true : JSON.parse(v) });
@@ -267,16 +268,36 @@ async function renderList(data) {
   // 대기 구간이면 안내만
   const nowInfo = getCurrentTimeInfo(new Date());
   if (nowInfo && nowInfo.type === "waiting") {
-    $list.innerHTML = `<div class="empty-state">현재 전설 카드가 출현하지 않았습니다</div>`;
+    $list.innerHTML = `<div class="empty-state">현재는 다음 상인을 기다리고 있습니다</div>`;
     return;
   }
 
   if (!Array.isArray(data) || data.length === 0) {
-    $list.innerHTML = `<div class="empty-state">데이터를 찾을 수 없습니다</div>`;
+    $list.innerHTML = `<div class="empty-state">데이터를 찾을 수 없습니다 잠시 후 다시 시도해주세요</div>`;
     return;
   }
 
-  const reports = data[0]?.reports || [];
+  const currentTime = new Date();
+
+  let reports = null;
+  // data 배열을 순회하며 현재 시간이 startTime과 endTime 사이에 있는지 확인
+  for (let i = 0; i < data.length; i++) {
+    const startTime = new Date(data[i].startTime);
+    const endTime = new Date(data[i].endTime);
+
+    // 현재 시간이 시작 시간과 종료 시간 사이에 있는지 확인
+    if (currentTime >= startTime && currentTime <= endTime) {
+      reports = data[i].reports || null;
+    }
+  }
+
+  //reports
+  if (!reports || reports.length === 0) {
+    $list.innerHTML = `<div class="empty-state">현재 데이터를 수집중입니다.</div>`;
+    return;
+  }
+
+  // 전설 카드 필터링
   const merchantData = await getMerchantData();
   const requireItems = [];
 

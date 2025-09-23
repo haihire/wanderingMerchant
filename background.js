@@ -64,8 +64,17 @@ async function getLegendaryCardsNow() {
     before: new Date().toISOString(),
   });
   const merchantData = await getMerchantData();
-  const reports =
-    Array.isArray(data) && data[0]?.reports ? data[0].reports : [];
+  const currentTime = new Date();
+  let reports = null;
+  for (let i = 0; i < data.length; i++) {
+    const startTime = new Date(data[i].startTime);
+    const endTime = new Date(data[i].endTime);
+
+    // 현재 시간이 시작 시간과 종료 시간 사이에 있는지 확인
+    if (currentTime >= startTime && currentTime <= endTime) {
+      reports = data[i].reports || null;
+    }
+  }
   const hits = [];
   for (const report of reports) {
     for (const itemId of report.itemIds || []) {
@@ -149,14 +158,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   try {
     const hits = await getLegendaryCardsNow();
     if (hits.length > 0) {
-      const first = hits[0];
+      //hits 안에 포함된 데이터가 1개이상일수도 있음 현재는 1개만 출력하는데 hits에 포함된 것들 전부 출력하되 알람은 1개만 띄우는걸로 변경
       const title = "🃏 전설 카드 출현!";
-      const msg = [
-        first.name
-          ? `${first.name}${first.setName ? ` / ${first.setName}` : ""}`
-          : "전설 카드",
-        first.regionName ? `지역: ${first.regionName}` : null,
-      ]
+      const msg = hits
+        .map((hit) => [
+          hit.name
+            ? `${hit.name}${hit.setName ? ` / ${hit.setName}` : ""}`
+            : "전설 카드",
+          hit.regionName ? `지역: ${hit.regionName}` : null,
+        ])
         .filter(Boolean)
         .join("\n");
 
