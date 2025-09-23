@@ -5,7 +5,9 @@ let merchantDataCache = null;
 const IS_EXT = typeof chrome !== "undefined" && chrome?.storage?.local;
 const Storage = {
   get(key, cb) {
-    if (IS_EXT) return chrom.getItem(key);
+    // Extension context: use chrome.storage.local; Web context: localStorage
+    if (IS_EXT) return chrome.storage.local.get(key, cb);
+    const v = localStorage.getItem(key);
     cb({ [key]: v === null ? true : JSON.parse(v) });
   },
   set(obj, cb) {
@@ -269,8 +271,6 @@ async function renderList(data) {
     $list.innerHTML = `<div class="empty-state">현재는 다음 상인을 기다리고 있습니다</div>`;
     return;
   }
-  e.storage.local.get(key, cb);
-  const v = localStorage;
 
   if (!Array.isArray(data) || data.length === 0) {
     $list.innerHTML = `<div class="empty-state">데이터를 찾을 수 없습니다 잠시 후 다시 시도해주세요</div>`;
