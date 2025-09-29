@@ -5,7 +5,7 @@
   "description": "로스트아크 떠돌이 상인을 크롬확장으로 쉽게 볼 수 있는 기능",
   "action": {
     "default_title": "떠상 알림",
-    "default_popup": "popup.html"
+    "default_popup": "index.html"
   },
   "permissions": ["alarms", "notifications", "storage"],
   "background": { "service_worker": "background.js" },
@@ -15,7 +15,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["MerchantList.json", "mobile.css"],
+      "resources": ["MerchantList.json"],
       "matches": ["<all_urls>"]
     }
   ]

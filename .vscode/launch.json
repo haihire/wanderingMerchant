@@ -5,7 +5,7 @@
       "type": "chrome",
       "request": "launch",
       "name": "Debug Merchant Watcher",
-      "url": "http://localhost:8000/popup.html",
+      "url": "http://localhost:8000/index.html",
       "webRoot": "${workspaceFolder}",
       "sourceMaps": true,
       "userDataDir": "${workspaceFolder}/.vscode/chrome-debug-user-data",
