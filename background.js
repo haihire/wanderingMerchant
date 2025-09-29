@@ -40,13 +40,10 @@ function findItemInMerchantData(merchantData, itemId) {
   return null;
 }
 
-async function fetchMerchant({
-  server = 3,
-  before = new Date().toISOString(),
-} = {}) {
+async function fetchAndProcessMerchantData() {
   const url = new URL(API_BASE);
   url.searchParams.set("server", String(server));
-  url.searchParams.set("before", before);
+  url.searchParams.set("before", new Date().toISOString());
   console.log(
     `[${new Date().toLocaleTimeString()}] API 호출: ${url.toString()}`
   );
@@ -57,14 +54,7 @@ async function fetchMerchant({
     const t = await res.text().catch(() => "");
     throw new Error(`HTTP ${res.status}: ${t || res.statusText}`);
   }
-  return res.json();
-}
-
-async function getLegendaryCardsNow() {
-  const data = await fetchMerchant({
-    server: 3,
-    before: new Date().toISOString(),
-  });
+  const data = await res.json();
   const merchantData = await getMerchantData();
   const currentTime = new Date();
 
@@ -85,15 +75,13 @@ async function getLegendaryCardsNow() {
           hits.push({
             ...found,
             uniqueId: `${report.id}-${found.id}`,
-            regionId: report.regionId,
-            reportId: report.id,
-            createdAt: report.createdAt,
           });
         }
       }
     }
   }
-  return hits;
+  // reports와 hits를 함께 반환
+  return { reports, hits };
 }
 
 function getNextStartFromNow() {
@@ -127,6 +115,7 @@ let pollingTimer = null;
 let monitoringTimeoutTimer = null;
 let notifiedCardIds = new Set();
 let hasFoundInitialData = false;
+let previousReportIds = ""; // 이전 reports의 ID 문자열을 저장
 
 /* 알람 핸들러 */
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -148,6 +137,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   );
   notifiedCardIds.clear();
   hasFoundInitialData = false;
+  previousReportIds = "";
   if (pollingTimer) clearInterval(pollingTimer);
   if (monitoringTimeoutTimer) clearTimeout(monitoringTimeoutTimer);
 
@@ -159,15 +149,29 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
   const poll = async () => {
     console.log(
-      `[${new Date().toLocaleTimeString()}] -> 폴링 실행: 서버에 전설 카드 데이터 요청...`
+      `[${new Date().toLocaleTimeString()}] -> 폴링 실행: 서버 데이터 요청...`
     );
     try {
-      const allHits = await getLegendaryCardsNow();
+      const { reports, hits: allHits } = await fetchAndProcessMerchantData();
+
+      const currentReportIds = reports
+        ? reports.map((r) => r.id).join(",")
+        : "";
+
+      // 이전 데이터와 동일하면 아무 작업도 하지 않음
+      if (currentReportIds === previousReportIds) {
+        console.log(
+          `[${new Date().toLocaleTimeString()}] <-- 데이터 변경 없음. 건너뜁니다.`
+        );
+        return;
+      }
+
       console.log(
-        `[${new Date().toLocaleTimeString()}] <-- 데이터 수신. 총 ${
+        `[${new Date().toLocaleTimeString()}] <-- 새로운 데이터 수신. 총 ${
           allHits.length
         }개의 전설 카드 발견.`
       );
+      previousReportIds = currentReportIds;
 
       if (!hasFoundInitialData && allHits.length > 0) {
         console.log(

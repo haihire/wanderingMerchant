@@ -1,5 +1,13 @@
-for Debug command
+# 떠돌이 상인 (Wandering Merchant)
 
-- python -m http.server 8000 --bind 127.0.0.1
+이 프로젝트는 떠돌이 상인 시뮬레이션 게임입니다.
 
-* Fress F5
+## 실행 방법
+
+1. 아래 명령어를 사용하여 로컬 서버를 실행합니다.
+
+   python -m http.server 8000 --bind 127.0.0.1
+   Fress F5
+
+2. 웹 브라우저에서 `http://127.0.0.1:8000`으로 접속합니다.
+3. 페이지를 새로고침하려면 F5 키를 누릅니다.

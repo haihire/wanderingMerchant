@@ -12,5 +12,11 @@
   "host_permissions": ["https://api.korlark.com/*"],
   "icons": {
     "128": "icons/icon_128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["MerchantList.json", "mobile.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

@@ -1,4 +1,9 @@
 // popup.js
+// 페이지가 확장 프로그램 팝업으로 실행되었는지 확인
+if (window.location.protocol === "chrome-extension:") {
+  document.body.classList.add("is-extension");
+}
+
 let merchantDataCache = null;
 
 /* ===== 확장/웹 공통 스토리지 shim ===== */

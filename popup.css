@@ -1,58 +1,42 @@
-/* ===== popup.css ===== */
+/* ===== popup.css (최종 수정본) ===== */
+
+/* ------------------------------------ */
+/* 1. 공통 스타일 (모든 화면에 적용)      */
+/* ------------------------------------ */
 :root {
   --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --bg-overlay: rgba(255, 255, 255, 0.95);
   --fg: #1a202c;
-  --fg-secondary: #4a5568;
   --muted: #718096;
   --accent: #4299e1;
   --accent-hover: #3182ce;
-  --accent-press: #2b77cb;
-  --border: #e2e8f0;
-  --border-light: #f7fafc;
   --card-bg: #ffffff;
-  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --border: #e2e8f0;
   --success: #48bb78;
   --success-light: #9ae6b4;
   --warning: #ed8936;
   --warning-light: #fbb040;
-  --purple: #805ad5;
-  --purple-light: #b794f6;
 }
-
 * {
   box-sizing: border-box;
 }
-
-html,
+html {
+  background: var(--bg);
+  height: 100%;
+}
 body {
-  width: 220px;
-  margin: 0;
+  margin: 0 auto; /* 모바일에서 중앙 정렬 */
   padding: 0;
   background: var(--bg);
   color: var(--fg);
-  font: 13px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Noto Sans,
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans,
     Apple SD Gothic Neo, "맑은 고딕", sans-serif;
   overflow-x: hidden;
-  overflow-y: hidden;
+  width: 100%; /* 기본 너비를 100%로 설정 (모바일 우선) */
+  min-height: 100%;
 }
-
-body {
-  padding: 0;
-  position: relative;
-}
-
-/* 컨테이너 */
 .container {
   padding: 16px;
-  position: relative;
-  z-index: 1;
 }
-
-/* 헤더 */
 .header {
   display: flex;
   align-items: center;
@@ -61,8 +45,6 @@ body {
   padding: 12px;
   background: var(--card-bg);
   border-radius: 16px;
-  box-shadow: var(--card-shadow);
-  border: 1px solid var(--border-light);
 }
 .header-content {
   display: flex;
@@ -71,19 +53,15 @@ body {
 }
 .header-icon {
   font-size: 18px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 .header-title {
-  font-size: 16px;
   font-weight: 700;
   margin: 0;
-  background: linear-gradient(135deg, var(--purple), var(--accent));
+  background: linear-gradient(135deg, #805ad5, var(--accent));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
-/* 갱신 버튼 */
 .refresh-btn {
   display: flex;
   align-items: center;
@@ -91,29 +69,11 @@ body {
   background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   color: #fff;
   border: none;
-  padding: 8px 12px;
   border-radius: 12px;
-  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(66, 153, 225, 0.3);
-}
-.refresh-btn:hover {
-  background: linear-gradient(135deg, var(--accent-hover), var(--accent-press));
-  box-shadow: 0 4px 8px rgba(66, 153, 225, 0.4);
-}
-.refresh-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(66, 153, 225, 0.3);
-}
-.refresh-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
 }
 .refresh-icon {
-  font-size: 12px;
   animation: rotate 2s linear infinite paused;
 }
 .refresh-btn.loading .refresh-icon {
@@ -127,31 +87,15 @@ body {
     transform: rotate(360deg);
   }
 }
-
-/* 시간 섹션 */
 .time-section {
   margin-bottom: 16px;
 }
-
-/* 현재 시간 / 프로그레스 바 */
 #currentTime {
   width: 100%;
   padding: 16px;
   border-radius: 16px;
   background: var(--card-bg);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--card-shadow);
 }
-/* 기본 시간 표시 */
-.time-display {
-  font-size: 18px;
-  font-weight: 700;
-  text-align: center;
-  color: var(--fg);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* 프로그레스 */
 .progress-container {
   display: flex;
   flex-direction: column;
@@ -162,16 +106,12 @@ body {
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
-  font-size: 11px;
   font-weight: 600;
 }
 .time-remaining {
   color: black;
-  font-size: 11px;
-  border-radius: 8px;
   font-weight: bold;
 }
-
 .progress-bar {
   position: relative;
   width: 100%;
@@ -179,110 +119,45 @@ body {
   background: var(--border);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .progress-fill {
   height: 100%;
   border-radius: 12px;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  transition: width 0.5s ease;
 }
 .progress-active {
   background: linear-gradient(135deg, var(--success), var(--success-light));
-  box-shadow: 0 0 16px rgba(72, 187, 120, 0.4);
-  position: relative;
-}
-.progress-active::before,
-.progress-waiting::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.3),
-    transparent
-  );
-  animation: shimmer 2s infinite;
 }
 .progress-waiting {
   background: linear-gradient(135deg, var(--warning), var(--warning-light));
-  box-shadow: 0 0 16px rgba(237, 137, 54, 0.4);
-  position: relative;
-}
-@keyframes shimmer {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
 }
 .progress-text {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 12px;
   font-weight: 700;
   color: black;
-  z-index: 1;
 }
-
-/* 카드 리스트 */
 .card-list {
   display: grid;
   gap: 10px;
-  overflow-y: auto;
   min-height: 80px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.card-list::-webkit-scrollbar {
-  width: 0;
-  height: 0;
 }
 .card-list > div {
-  padding: 4px !important;
-  border: 1px solid var(--border-light) !important;
-  border-radius: 16px !important;
-  background: var(--card-bg) !important;
-  box-shadow: var(--card-shadow) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  position: relative !important;
-  overflow: hidden !important;
+  background: var(--card-bg);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
 }
-.card-list > div > div {
-  margin-top: 8px !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
-  color: var(--fg) !important;
-  font-weight: 600 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 6px !important;
-}
-.card-list > div > div:first-child {
-  margin-top: 0 !important;
-}
-
-/* 빈/에러 상태 */
-.empty-state {
-  text-align: center !important;
-  padding: 32px 16px !important;
-  color: var(--muted) !important;
-  font-size: 14px !important;
-  background: var(--card-bg) !important;
-  border-radius: 16px !important;
-  border: 2px dashed var(--border) !important;
-  box-shadow: none !important;
+.empty-state,
+.error-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--muted);
+  background: var(--card-bg);
+  border-radius: 16px;
+  border: 2px dashed var(--border);
 }
 .empty-state::before {
   content: "🔍";
@@ -291,96 +166,20 @@ body {
   margin-bottom: 12px;
   opacity: 0.5;
 }
-.error-state {
-  background: linear-gradient(135deg, #fed7d7, #feb2b2) !important;
-  border-color: #f56565 !important;
-  color: #c53030 !important;
-}
-
-/* 애니메이션 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.container {
-  animation: fadeIn 0.4s ease-out;
-}
-.header,
-.notify-toggle {
-  animation: slideIn 0.5s ease-out;
-}
-.time-section {
-  animation: fadeIn 0.6s ease-out 0.1s both;
-}
-.card-list > div {
-  animation: fadeIn 0.4s ease-out both;
-}
-.card-list > div:nth-child(1) {
-  animation-delay: 0.1s;
-}
-.card-list > div:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.card-list > div:nth-child(3) {
-  animation-delay: 0.3s;
-}
-.card-list > div:nth-child(4) {
-  animation-delay: 0.4s;
-}
-.card-list > div:nth-child(5) {
-  animation-delay: 0.5s;
-}
-
-/* 포커스/유틸 */
-.refresh-btn:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.3);
-}
-.header-icon,
-.refresh-icon {
-  user-select: none;
-  -webkit-user-select: none;
-}
-.truncate {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ===== 전설 카드 알림 토글 ===== */
 .notify-toggle {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 5px;
   background: var(--card-bg);
   border-radius: 16px;
-  margin-bottom: 16px; /* 제목 옆 살짝 띄움 */
-  justify-content: space-between;
+  margin-bottom: 16px;
 }
-.notify-toggle label[for="toggleNotify"] {
+.notify-toggle label {
   font-weight: 600;
-  color: var(--fg);
   user-select: none;
 }
-
-/* 스위치 */
 #toggleNotify {
   appearance: none;
   -webkit-appearance: none;
@@ -388,12 +187,10 @@ body {
   height: 24px;
   border-radius: 999px;
   position: relative;
-  outline: none;
   border: 1px solid var(--border);
   background: #e5e7eb;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
 }
 #toggleNotify::after {
   content: "";
@@ -405,56 +202,156 @@ body {
   height: 20px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
   transition: left 0.2s ease;
 }
 #toggleNotify:checked {
   background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   border-color: transparent;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
 }
 #toggleNotify:checked::after {
   left: 22px;
 }
-#toggleNotify:focus-visible {
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.35);
-}
-@media (prefers-reduced-motion: reduce) {
-  #toggleNotify,
-  #toggleNotify::after {
-    transition: none !important;
-  }
-}
-
-/* ===== 카드 내부: 이름/지역 ===== */
 .card-name {
-  font-size: 14px;
   font-weight: 800;
   color: var(--fg);
-  line-height: 1.35;
-  letter-spacing: 0.2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* 파란 톤 지역 배지 */
 .card-region {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   max-width: 100%;
   margin-top: 2px;
-  font-size: 12px;
   font-weight: 700;
   color: #fff;
   padding: 4px 10px;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 2px 6px rgba(49, 130, 206, 0.25);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   align-self: flex-end;
+}
+
+/* ------------------------------------------- */
+/* 2. 확장 프로그램 팝업 전용 스타일 (고정 너비) */
+/* ------------------------------------------- */
+body.is-extension {
+  width: 220px; /* 확장 프로그램일 때만 고정 너비 적용 */
+  font-size: 13px;
+  line-height: 1.45;
+}
+body.is-extension .header-title {
+  font-size: 16px;
+}
+body.is-extension .refresh-btn {
+  padding: 8px 12px;
+  font-size: 11px;
+}
+body.is-extension .refresh-icon {
+  font-size: 12px;
+}
+body.is-extension .time-display {
+  font-size: 18px;
+}
+body.is-extension .progress-info,
+body.is-extension .time-remaining {
+  font-size: 11px;
+}
+body.is-extension .progress-text {
+  font-size: 12px;
+}
+body.is-extension .card-list > div {
+  padding: 4px !important;
+}
+body.is-extension .card-list > div > div {
+  margin-top: 8px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+body.is-extension .card-name {
+  font-size: 14px;
+}
+body.is-extension .card-region {
+  font-size: 12px;
+}
+
+/* ------------------------------------ */
+/* 3. 모바일 화면 스타일 (반응형)        */
+/* ------------------------------------ */
+@media screen and (max-width: 480px) {
+  body:not(.is-extension) {
+    /* 확장 프로그램이 아닐 때만 적용 */
+    max-width: 480px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  body:not(.is-extension) .container {
+    padding: 16px;
+  }
+  body:not(.is-extension) .header-icon {
+    font-size: 20px;
+  }
+  body:not(.is-extension) .header-title {
+    font-size: 18px;
+  }
+  body:not(.is-extension) .refresh-btn {
+    font-size: 12px;
+  }
+  body:not(.is-extension) .refresh-icon {
+    font-size: 14px;
+  }
+  body:not(.is-extension) .time-display {
+    font-size: 20px;
+  }
+  body:not(.is-extension) .progress-info,
+  body:not(.is-extension) .time-remaining,
+  body:not(.is-extension) .progress-text {
+    font-size: 12px;
+  }
+  body:not(.is-extension) .notify-toggle label {
+    font-size: 15px;
+  }
+  body:not(.is-extension) .card-list {
+    gap: 12px;
+    min-height: 100px;
+  }
+  body:not(.is-extension) .card-list > div {
+    padding: 12px !important;
+    gap: 8px !important;
+  }
+  body:not(.is-extension) .card-name {
+    font-size: 16px;
+  }
+  body:not(.is-extension) .card-region {
+    font-size: 13px;
+    align-self: flex-start;
+  }
+  body:not(.is-extension) .empty-state {
+    padding: 40px 20px !important;
+    font-size: 15px !important;
+  }
+  body:not(.is-extension) .empty-state::before {
+    font-size: 36px;
+  }
+}
+
+@media screen and (max-width: 320px) {
+  body:not(.is-extension) {
+    font-size: 13px;
+  }
+  body:not(.is-extension) .container {
+    padding: 12px;
+  }
+  body:not(.is-extension) .header-title {
+    font-size: 16px;
+  }
+  body:not(.is-extension) .card-name {
+    font-size: 15px;
+  }
+  body:not(.is-extension) .card-region {
+    font-size: 12px;
+  }
 }
