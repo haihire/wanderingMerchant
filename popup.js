@@ -5,7 +5,6 @@ let merchantDataCache = null;
 const IS_EXT = typeof chrome !== "undefined" && chrome?.storage?.local;
 const Storage = {
   get(key, cb) {
-    // Extension context: use chrome.storage.local; Web context: localStorage
     if (IS_EXT) return chrome.storage.local.get(key, cb);
     const v = localStorage.getItem(key);
     cb({ [key]: v === null ? true : JSON.parse(v) });
@@ -207,8 +206,6 @@ function updateProgressDisplay(timeInfo) {
     </div>
   `;
 }
-setInterval(tick, 1000);
-tick();
 
 /* ===== 데이터 로딩/렌더 ===== */
 const API_BASE = "https://api.korlark.com/lostark/merchant/reports";
@@ -261,42 +258,30 @@ function findItemInMerchantData(merchantData, itemId) {
   return null;
 }
 
+let beforeReportIds = null;
 /** 리스트 렌더 */
 async function renderList(data) {
-  $list.innerHTML = "";
-
-  // 대기 구간이면 안내만
-  const nowInfo = getCurrentTimeInfo(new Date());
-  if (nowInfo && nowInfo.type === "waiting") {
-    $list.innerHTML = `<div class="empty-state">현재는 다음 상인을 기다리고 있습니다</div>`;
-    return;
-  }
-
   if (!Array.isArray(data) || data.length === 0) {
     $list.innerHTML = `<div class="empty-state">데이터를 찾을 수 없습니다 잠시 후 다시 시도해주세요</div>`;
     return;
   }
 
   const currentTime = new Date();
+  const currentSession = data.find((session) => {
+    const startTime = new Date(session.startTime);
+    const endTime = new Date(session.endTime);
+    return currentTime >= startTime && currentTime <= endTime;
+  });
 
-  let reports = null;
-  // data 배열을 순회하며 현재 시간이 startTime과 endTime 사이에 있는지 확인
-  for (let i = 0; i < data.length; i++) {
-    const startTime = new Date(data[i].startTime);
-    const endTime = new Date(data[i].endTime);
-
-    // 현재 시간이 시작 시간과 종료 시간 사이에 있는지 확인
-    if (currentTime >= startTime && currentTime <= endTime) {
-      reports = data[i].reports || null;
-    }
-  }
-
+  const reports = currentSession ? currentSession.reports : null;
+  const reportIds = reports ? reports.map((r) => r.id).join(",") : "";
+  if (beforeReportIds === reportIds) return;
   //reports
   if (!reports || reports.length === 0) {
     $list.innerHTML = `<div class="empty-state">현재 데이터를 수집중입니다.</div>`;
     return;
   }
-
+  beforeReportIds = reportIds;
   // 전설 카드 필터링
   const merchantData = await getMerchantData();
   const requireItems = [];
@@ -360,7 +345,14 @@ async function refreshNow() {
     if (span) span.textContent = "로딩";
   }
 
+  const now = new Date();
+  const timeInfo = getCurrentTimeInfo(now);
+
   try {
+    if (timeInfo.type === "waiting") {
+      $list.innerHTML = `<div class="empty-state">현재는 다음 상인을 기다리고 있습니다</div>`;
+      return;
+    }
     const data = await fetchMerchant({
       server: 3,
       before: new Date().toISOString(),
@@ -382,8 +374,16 @@ async function refreshNow() {
 }
 
 if ($btn) $btn.addEventListener("click", refreshNow);
-refreshNow();
 
+function init() {
+  setInterval(tick, 1000);
+  tick();
+  $list.innerHTML = "";
+  refreshNow();
+  /** 주기적 호출 */
+  setInterval(refreshNow, 1 * 60 * 1000); // 1분마다 호출
+}
+init();
 /* ===== 알림 ON/OFF 토글 ===== */
 const STORAGE_KEY_NOTIFY = "notifyEnabled";
 function initNotifyToggle() {
