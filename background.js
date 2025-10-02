@@ -3,8 +3,8 @@ const API_BASE = "https://api.korlark.com/lostark/merchant/reports";
 const STORAGE_KEY_NOTIFY = "notifyEnabled";
 const ALARM_NAME = "period-start-check";
 
-const POLLING_INTERVAL = 60 * 1000; // 1분 간격으로 확인
-const MONITORING_DURATION = 5 * 60 * 1000; // 첫 데이터 발견 후 5분 동안만 추가 확인
+const POLLING_INTERVAL = 600 * 1000; // 1분 간격
+const MONITORING_DURATION = 5 * 60 * 1000;
 
 const TIME_PERIODS = [
   { start: { h: 4, m: 0 }, end: { h: 9, m: 30 }, name: "04:00~09:30" },
@@ -40,7 +40,7 @@ function findItemInMerchantData(merchantData, itemId) {
   return null;
 }
 
-async function fetchAndProcessMerchantData() {
+async function fetchAndProcessMerchantData({ server = 3 } = {}) {
   const url = new URL(API_BASE);
   url.searchParams.set("server", String(server));
   url.searchParams.set("before", new Date().toISOString());
@@ -65,7 +65,6 @@ async function fetchAndProcessMerchantData() {
   });
 
   const reports = currentSession ? currentSession.reports : [];
-
   const hits = [];
   if (reports && reports.length > 0) {
     for (const report of reports) {
@@ -75,12 +74,12 @@ async function fetchAndProcessMerchantData() {
           hits.push({
             ...found,
             uniqueId: `${report.id}-${found.id}`,
+            regionName: found.regionName,
           });
         }
       }
     }
   }
-  // reports와 hits를 함께 반환
   return { reports, hits };
 }
 
@@ -115,7 +114,7 @@ let pollingTimer = null;
 let monitoringTimeoutTimer = null;
 let notifiedCardIds = new Set();
 let hasFoundInitialData = false;
-let previousReportIds = ""; // 이전 reports의 ID 문자열을 저장
+let previousReportIds = "";
 
 /* 알람 핸들러 */
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -153,19 +152,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     );
     try {
       const { reports, hits: allHits } = await fetchAndProcessMerchantData();
-
       const currentReportIds = reports
         ? reports.map((r) => r.id).join(",")
         : "";
-
-      // 이전 데이터와 동일하면 아무 작업도 하지 않음
       if (currentReportIds === previousReportIds) {
         console.log(
           `[${new Date().toLocaleTimeString()}] <-- 데이터 변경 없음. 건너뜁니다.`
         );
         return;
       }
-
       console.log(
         `[${new Date().toLocaleTimeString()}] <-- 새로운 데이터 수신. 총 ${
           allHits.length
@@ -179,7 +174,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
           "color: orange; font-weight: bold;"
         );
         hasFoundInitialData = true;
-
         monitoringTimeoutTimer = setTimeout(() => {
           console.log(
             `[${new Date().toLocaleTimeString()}] 모니터링 시간(5분) 종료. 이번 시간대 폴링을 완전히 중단합니다.`
@@ -192,33 +186,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       const newHits = allHits.filter(
         (hit) => !notifiedCardIds.has(hit.uniqueId)
       );
-
       if (newHits.length > 0) {
-        console.log(
-          `%c[${new Date().toLocaleTimeString()}] *** 새로운 카드 ${
-            newHits.length
-          }개 발견! ***`,
-          "color: #007bff; font-weight: bold;"
-        );
-        const title = "🃏 새로운 전설 카드 출현!";
-        const msg = newHits
-          .map((hit) => `${hit.name} - 지역: ${hit.regionName}`)
-          .join("\n");
-
-        console.log(
-          `[${new Date().toLocaleTimeString()}] 알림 생성: ${msg.replace(
-            "\n",
-            " | "
-          )}`
-        );
-        chrome.notifications.create(`notification_${Date.now()}`, {
-          type: "basic",
-          iconUrl: "icons/icon_128.png",
-          title,
-          message: msg,
-          priority: 2,
-        });
-
+        notifyUser(newHits);
         newHits.forEach((hit) => notifiedCardIds.add(hit.uniqueId));
         console.log(
           `[${new Date().toLocaleTimeString()}] 알림 보낸 카드 ID 기록:`,
@@ -234,23 +203,94 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   pollingTimer = setInterval(poll, POLLING_INTERVAL);
 });
 
+// ===== 신규: 알림 생성 함수 =====
+function notifyUser(hits) {
+  if (!Array.isArray(hits) || hits.length === 0) return;
+
+  console.log(
+    `%c[${new Date().toLocaleTimeString()}] *** 새로운 카드 ${
+      hits.length
+    }개 발견! 알림 생성. ***`,
+    "color: #007bff; font-weight: bold;"
+  );
+  const title = "🃏 새로운 전설 카드 출현!";
+  const msg = hits
+    .map((hit) => `${hit.name} - 지역: ${hit.regionName}`)
+    .join("\n");
+
+  chrome.notifications.create(`notification_${Date.now()}`, {
+    type: "basic",
+    iconUrl: "icons/icon_128.png",
+    title: title,
+    message: msg,
+    priority: 2,
+  });
+}
+
+// ===== 신규: 시작 시 즉시 확인 로직 =====
+async function runImmediateCheck() {
+  if (!(await isNotifyOn())) {
+    console.log(
+      `[${new Date().toLocaleTimeString()}] 시작 시 확인: 알림이 꺼져있어 건너뜁니다.`
+    );
+    return;
+  }
+
+  // 현재 시간이 상인 활동 시간인지 확인
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentTotalMinutes = currentHour * 60 + currentMinute;
+
+  const isActiveNow = TIME_PERIODS.some((period) => {
+    const startMinutes = period.start.h * 60 + period.start.m;
+    const endMinutes = period.end.h * 60 + period.end.m;
+    if (period.nextDay) {
+      return (
+        currentTotalMinutes >= startMinutes || currentTotalMinutes <= endMinutes
+      );
+    }
+    return (
+      currentTotalMinutes >= startMinutes && currentTotalMinutes <= endMinutes
+    );
+  });
+
+  if (!isActiveNow) {
+    console.log(
+      `[${new Date().toLocaleTimeString()}] 시작 시 확인: 현재는 상인 활동 시간이 아니므로 건너뜁니다.`
+    );
+    return;
+  }
+
+  console.log(
+    `[${new Date().toLocaleTimeString()}] 시작 시 확인: 현재 활동 시간이므로 즉시 데이터를 확인합니다.`
+  );
+  try {
+    const { hits } = await fetchAndProcessMerchantData();
+    if (hits.length > 0) {
+      // 시작 시에는 중복 체크 없이 현재 발견된 모든 카드를 알림
+      notifyUser(hits);
+    }
+  } catch (e) {
+    console.warn("시작 시 확인 중 오류 발생:", e);
+  }
+}
+
 /* 스위치 변경 반영 */
 chrome.storage.onChanged.addListener(async (changes, area) => {
-  if (area !== "local") return;
-  if (STORAGE_KEY_NOTIFY in changes) {
-    const enabled = changes[STORAGE_KEY_NOTIFY].newValue !== false;
-    console.log(
-      `[${new Date().toLocaleTimeString()}] 알림 설정 변경됨: ${
-        enabled ? "ON" : "OFF"
-      }`
-    );
-    if (enabled) {
-      await scheduleNextPeriodAlarm();
-    } else {
-      await chrome.alarms.clear(ALARM_NAME);
-      if (pollingTimer) clearInterval(pollingTimer);
-      if (monitoringTimeoutTimer) clearTimeout(monitoringTimeoutTimer);
-    }
+  if (area !== "local" || !(STORAGE_KEY_NOTIFY in changes)) return;
+  const enabled = changes[STORAGE_KEY_NOTIFY].newValue !== false;
+  console.log(
+    `[${new Date().toLocaleTimeString()}] 알림 설정 변경됨: ${
+      enabled ? "ON" : "OFF"
+    }`
+  );
+  if (enabled) {
+    await scheduleNextPeriodAlarm();
+  } else {
+    await chrome.alarms.clear(ALARM_NAME);
+    if (pollingTimer) clearInterval(pollingTimer);
+    if (monitoringTimeoutTimer) clearTimeout(monitoringTimeoutTimer);
   }
 });
 
@@ -263,10 +303,12 @@ chrome.runtime.onInstalled.addListener(async () => {
   if (typeof st[STORAGE_KEY_NOTIFY] === "undefined") {
     await chrome.storage.local.set({ [STORAGE_KEY_NOTIFY]: true });
   }
-  if (await isNotifyOn()) await scheduleNextPeriodAlarm();
+  await scheduleNextPeriodAlarm();
+  await runImmediateCheck(); // 설치 직후 즉시 확인
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   console.log(`[${new Date().toLocaleTimeString()}] 브라우저 시작됨.`);
-  if (await isNotifyOn()) await scheduleNextPeriodAlarm();
+  await scheduleNextPeriodAlarm();
+  await runImmediateCheck(); // 브라우저 시작 시 즉시 확인
 });

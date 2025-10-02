@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "떠돌이 상인 체크",
-  "version": "1.0.1",
-  "description": "로스트아크 떠돌이 상인을 크롬확장으로 쉽게 볼 수 있는 기능",
+  "name": "로스트아크 떠상 알리미",
+  "version": "1.0.3",
+  "description": "로스트아크(로아) 떠돌이 상인(떠상)의 전설 카드 판매 정보를 자동으로 확인하고 알려주는 확장 프로그램입니다.",
   "action": {
-    "default_title": "떠상 알림",
+    "default_title": "로스트아크 떠상 알리미",
     "default_popup": "index.html"
   },
   "permissions": ["alarms", "notifications", "storage"],
