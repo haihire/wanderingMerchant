@@ -63,7 +63,10 @@ body {
   background-clip: text;
 }
 .refresh-btn {
+  width: 100px;
+  height: 40px;
   display: flex;
+  justify-content: center;
   align-items: center;
   gap: 6px;
   background: linear-gradient(135deg, var(--accent), var(--accent-hover));
@@ -73,10 +76,10 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
-.refresh-icon {
-  animation: rotate 2s linear infinite paused;
+.refresh-btn:hover {
+  background: linear-gradient(135deg, var(--accent-hover), var(--accent));
 }
-.refresh-btn.loading .refresh-icon {
+.refresh-btn.loading {
   animation-play-state: running;
 }
 @keyframes rotate {
@@ -250,9 +253,7 @@ body.is-extension .refresh-btn {
   padding: 8px 12px;
   font-size: 11px;
 }
-body.is-extension .refresh-icon {
-  font-size: 12px;
-}
+
 body.is-extension .time-display {
   font-size: 18px;
 }
@@ -302,9 +303,6 @@ body.is-extension .card-region {
   body:not(.is-extension) .refresh-btn {
     font-size: 12px;
   }
-  body:not(.is-extension) .refresh-icon {
-    font-size: 14px;
-  }
   body:not(.is-extension) .time-display {
     font-size: 20px;
   }
@@ -321,7 +319,7 @@ body.is-extension .card-region {
     min-height: 100px;
   }
   body:not(.is-extension) .card-list > div {
-    padding: 12px !important;
+    padding: 8px !important;
     gap: 8px !important;
   }
   body:not(.is-extension) .card-name {
