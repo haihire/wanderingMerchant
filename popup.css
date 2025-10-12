@@ -278,8 +278,11 @@ body.is-extension .card-name {
 body.is-extension .card-region {
   font-size: 12px;
 }
-.card-content {
-  padding: 10px;
+body.is-extension .card-content {
+  padding: 4px !important;
+}
+body:not(.is-extension) .card-content {
+  padding: 10px !important;
 }
 /* ------------------------------------ */
 /* 3. 모바일 화면 스타일 (반응형)        */
@@ -319,8 +322,8 @@ body.is-extension .card-region {
     min-height: 100px;
   }
   body:not(.is-extension) .card-list > div {
-    padding: 8px !important;
-    gap: 8px !important;
+    /* padding: 8px !important;
+    gap: 8px !important; */
   }
   body:not(.is-extension) .card-name {
     font-size: 16px;
@@ -335,6 +338,10 @@ body.is-extension .card-region {
   }
   body:not(.is-extension) .empty-state::before {
     font-size: 36px;
+  }
+
+  body:not(.is-extension).card-content {
+    padding: 4px !important;
   }
 }
 
@@ -353,5 +360,8 @@ body.is-extension .card-region {
   }
   body:not(.is-extension) .card-region {
     font-size: 12px;
+  }
+  body:not(.is-extension) .card-content {
+    padding: 4px !important;
   }
 }
