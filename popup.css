@@ -250,6 +250,8 @@ body.is-extension .header-title {
   font-size: 16px;
 }
 body.is-extension .refresh-btn {
+  width: 50px !important;
+  height: 80% !important;
   padding: 8px 12px;
   font-size: 11px;
 }
