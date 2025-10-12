@@ -315,7 +315,7 @@ async function renderList(data) {
     const card = document.createElement("div");
     card.className = "card " + i;
     card.innerHTML = `
-      <div>
+      <div class="card-content">
         ${
           item.name
             ? `<div class="card-name">${escapeHtml(item.name)}${

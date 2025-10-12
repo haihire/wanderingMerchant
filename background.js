@@ -4,7 +4,6 @@ const STORAGE_KEY_NOTIFY = "notifyEnabled";
 const ALARM_NAME = "period-start-check";
 
 const POLLING_INTERVAL = 10 * 60 * 1000; // 10분 간격
-const MONITORING_DURATION = 5 * 60 * 1000; // 5분 간격
 
 const TIME_PERIODS = [
   { start: { h: 4, m: 0 }, end: { h: 9, m: 30 }, name: "04:00~09:30" },
