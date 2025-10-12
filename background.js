@@ -3,7 +3,7 @@ const API_BASE = "https://api.korlark.com/lostark/merchant/reports";
 const STORAGE_KEY_NOTIFY = "notifyEnabled";
 const ALARM_NAME = "period-start-check";
 
-const POLLING_INTERVAL = 600 * 1000; // 1분 간격
+const POLLING_INTERVAL = 600 * 1000; // 10분 간격
 const MONITORING_DURATION = 5 * 60 * 1000;
 
 const TIME_PERIODS = [
