@@ -3,8 +3,8 @@ const API_BASE = "https://api.korlark.com/lostark/merchant/reports";
 const STORAGE_KEY_NOTIFY = "notifyEnabled";
 const ALARM_NAME = "period-start-check";
 
-const POLLING_INTERVAL = 600 * 1000; // 10분 간격
-const MONITORING_DURATION = 5 * 60 * 1000;
+const POLLING_INTERVAL = 10 * 60 * 1000; // 10분 간격
+const MONITORING_DURATION = 5 * 60 * 1000; // 5분 간격
 
 const TIME_PERIODS = [
   { start: { h: 4, m: 0 }, end: { h: 9, m: 30 }, name: "04:00~09:30" },
@@ -111,7 +111,7 @@ async function isNotifyOn() {
 }
 
 let pollingTimer = null;
-let monitoringTimeoutTimer = null;
+
 let notifiedCardIds = new Set();
 let hasFoundInitialData = false;
 let previousReportIds = "";
@@ -138,12 +138,11 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   hasFoundInitialData = false;
   previousReportIds = "";
   if (pollingTimer) clearInterval(pollingTimer);
-  if (monitoringTimeoutTimer) clearTimeout(monitoringTimeoutTimer);
 
   await scheduleNextPeriodAlarm();
 
   console.log(
-    `[${new Date().toLocaleTimeString()}] 서버 데이터 확인을 위한 폴링을 시작합니다. (1분 간격)`
+    `[${new Date().toLocaleTimeString()}] 서버 데이터 확인을 위한 폴링을 시작합니다. (10분 간격)`
   );
 
   const poll = async () => {
@@ -168,21 +167,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       );
       previousReportIds = currentReportIds;
 
-      if (!hasFoundInitialData && allHits.length > 0) {
-        console.log(
-          `%c[${new Date().toLocaleTimeString()}] 최초 데이터 발견! 지금부터 5분간 추가 데이터를 모니터링합니다.`,
-          "color: orange; font-weight: bold;"
-        );
-        hasFoundInitialData = true;
-        monitoringTimeoutTimer = setTimeout(() => {
-          console.log(
-            `[${new Date().toLocaleTimeString()}] 모니터링 시간(5분) 종료. 이번 시간대 폴링을 완전히 중단합니다.`
-          );
-          if (pollingTimer) clearInterval(pollingTimer);
-          pollingTimer = null;
-        }, MONITORING_DURATION);
-      }
-
+      // 기존 카드와 비교하여 새로 추가된 카드 알림 (원하는 로직 유지)
       const newHits = allHits.filter(
         (hit) => !notifiedCardIds.has(hit.uniqueId)
       );
@@ -290,7 +275,6 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   } else {
     await chrome.alarms.clear(ALARM_NAME);
     if (pollingTimer) clearInterval(pollingTimer);
-    if (monitoringTimeoutTimer) clearTimeout(monitoringTimeoutTimer);
   }
 });
 
@@ -302,13 +286,9 @@ chrome.runtime.onInstalled.addListener(async () => {
   const st = await chrome.storage.local.get(STORAGE_KEY_NOTIFY);
   if (typeof st[STORAGE_KEY_NOTIFY] === "undefined") {
     await chrome.storage.local.set({ [STORAGE_KEY_NOTIFY]: true });
+    // 알림 설정이 없어서 새로 저장한 경우에는 여기서 알람 예약하지 않음
+    // storage.onChanged에서 자동으로 예약됨
+  } else {
+    await scheduleNextPeriodAlarm();
   }
-  await scheduleNextPeriodAlarm();
-  await runImmediateCheck(); // 설치 직후 즉시 확인
-});
-
-chrome.runtime.onStartup.addListener(async () => {
-  console.log(`[${new Date().toLocaleTimeString()}] 브라우저 시작됨.`);
-  await scheduleNextPeriodAlarm();
-  await runImmediateCheck(); // 브라우저 시작 시 즉시 확인
 });
