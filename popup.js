@@ -22,15 +22,8 @@ const Storage = {
   },
 };
 let currentServer = 3;
-if (typeof chrome === "undefined" || !chrome.storage?.local) {
-  // 크롬 확장 환경이 아니면 localStorage 사용
-  const saved = localStorage.getItem("currentServer");
-  if (saved) currentServer = Number(saved);
-  document.getElementById("currentServerName").textContent =
-    SERVER_NAMES[currentServer];
-  refreshNow();
-} else {
-  chrome.storage.local.get("currentServer", (st) => {
+if (IS_EXT) {
+  chrome.storage?.local?.get("currentServer", (st) => {
     if (st && st.currentServer) {
       currentServer = st.currentServer;
       document.getElementById("currentServerName").textContent =
@@ -38,8 +31,17 @@ if (typeof chrome === "undefined" || !chrome.storage?.local) {
       refreshNow();
     }
   });
+} else {
+  const lsServer = localStorage.getItem("currentServer");
+  if (lsServer) {
+    currentServer = parseInt(lsServer, 10);
+    document.getElementById("currentServerName").textContent =
+      SERVER_NAMES[currentServer];
+    refreshNow();
+  }
 }
 
+//크롬이 아니라면
 const $time = document.getElementById("currentTime");
 const $btn = document.getElementById("btnRefresh");
 const $list = document.getElementById("list");
@@ -477,7 +479,12 @@ document.addEventListener("DOMContentLoaded", function () {
         currentServer = parseInt(div.id, 10);
         document.getElementById("currentServerName").textContent =
           SERVER_NAMES[currentServer];
-        chrome.storage?.local?.set({ currentServer });
+        if (IS_EXT) {
+          chrome.storage?.local?.set({ currentServer });
+        } else {
+          localStorage.setItem("currentServer", currentServer);
+        }
+
         serverList.style.display = "none";
         refreshNow();
       });
