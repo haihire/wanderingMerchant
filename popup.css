@@ -38,7 +38,9 @@ body {
   padding: 16px;
 }
 .header {
+  position: relative;
   display: flex;
+
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
@@ -51,16 +53,87 @@ body {
   align-items: center;
   gap: 10px;
 }
-.header-icon {
-  font-size: 18px;
-}
+
 .header-title {
+  border: none;
   font-weight: 700;
   margin: 0;
   background: linear-gradient(135deg, #805ad5, var(--accent));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+.server-title-wrap {
+  position: relative;
+  display: inline-block;
+}
+.server-list {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef4fa 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(67, 97, 238, 0.12),
+    0 1.5px 6px rgba(0, 0, 0, 0.08);
+  margin-top: 8px;
+  padding: 10px 0;
+  font-size: 15px;
+  width: max-content;
+  min-width: 110px;
+  z-index: 10;
+  color: #2563eb; /* 기본 글자색을 산뜻한 파란색으로 */
+  border: 1px solid #e2e8f0;
+  transition: box-shadow 0.2s;
+}
+
+.server-list > div {
+  padding: 8px 20px;
+  cursor: pointer;
+  font-weight: 500;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.18s, color 0.18s;
+  color: #2563eb; /* 기본 글자색 */
+  background: transparent;
+}
+
+.server-list > div:last-child {
+  border-bottom: none;
+}
+
+.server-list > div:hover {
+  background: linear-gradient(90deg, #e3f0ff 0%, #f0f4ff 100%);
+  color: #4299e1;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(67, 97, 238, 0.08);
+  border-radius: 8px;
+}
+
+.header-title .server-list {
+  -webkit-text-fill-color: initial !important;
+  color: black !important;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-top: 4px;
+  padding: 8px;
+  font-size: 15px;
+  min-width: 80px;
+  z-index: 10;
+  position: absolute;
+  left: 0;
+  top: 100%;
+}
+
+#currentServerName {
+  cursor: pointer;
+}
+.server-list > div {
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.server-list > div:hover {
+  background: #f0f0f0;
 }
 .refresh-btn {
   width: 100px;
@@ -126,7 +199,7 @@ body {
 .progress-fill {
   height: 100%;
   border-radius: 12px;
-  transition: width 0.5s ease;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); /* 1초로 늘림 */
 }
 .progress-active {
   background: linear-gradient(135deg, var(--success), var(--success-light));
@@ -237,6 +310,23 @@ body {
   text-overflow: ellipsis;
   align-self: flex-end;
 }
+#serverList ul li {
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+#serverList ul li:hover {
+  background: var(--accent-hover);
+  color: #fff;
+  font-weight: bold;
+  border-radius: 6px;
+}
+#serverList ul li.selected {
+  background: var(--accent);
+  color: #fff;
+  font-weight: bold;
+  border-radius: 6px;
+}
 
 /* ------------------------------------------- */
 /* 2. 확장 프로그램 팝업 전용 스타일 (고정 너비) */
@@ -247,8 +337,9 @@ body.is-extension {
   line-height: 1.45;
 }
 body.is-extension .header-title {
-  font-size: 16px;
+  font-size: 10px;
 }
+
 body.is-extension .refresh-btn {
   width: 50px !important;
   height: 80% !important;
@@ -286,6 +377,13 @@ body.is-extension .card-content {
 body:not(.is-extension) .card-content {
   padding: 10px !important;
 }
+body.is-extension .header-content {
+  font-size: 13px; /* 상위 요소에서 크기 조절 */
+}
+body.is-extension #currentServerName {
+  font-size: 1.8em; /* 여기서 크기 지정 */
+  font-weight: 700;
+}
 /* ------------------------------------ */
 /* 3. 모바일 화면 스타일 (반응형)        */
 /* ------------------------------------ */
@@ -299,14 +397,16 @@ body:not(.is-extension) .card-content {
   body:not(.is-extension) .container {
     padding: 16px;
   }
-  body:not(.is-extension) .header-icon {
-    font-size: 20px;
+
+  body:not(.is-extension) .header-content {
+    width: 70%;
   }
   body:not(.is-extension) .header-title {
     font-size: 18px;
   }
   body:not(.is-extension) .refresh-btn {
     font-size: 12px;
+    width: 30%;
   }
   body:not(.is-extension) .time-display {
     font-size: 20px;
@@ -349,7 +449,7 @@ body:not(.is-extension) .card-content {
 
 @media screen and (max-width: 320px) {
   body:not(.is-extension) {
-    font-size: 13px;
+    font-size: 130px;
   }
   body:not(.is-extension) .container {
     padding: 12px;

@@ -39,7 +39,11 @@ function findItemInMerchantData(merchantData, itemId) {
   return null;
 }
 
-async function fetchAndProcessMerchantData({ server = 3 } = {}) {
+async function fetchAndProcessMerchantData() {
+  // currentServer 값을 chrome.storage.local에서 비동기로 가져옴
+  const st = await chrome.storage.local.get("currentServer");
+  const server = st.currentServer ?? 3;
+
   const url = new URL(API_BASE);
   url.searchParams.set("server", String(server));
   url.searchParams.set("before", new Date().toISOString());

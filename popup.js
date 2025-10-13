@@ -20,11 +20,32 @@ const Storage = {
     cb && cb();
   },
 };
+let currentServer = 3;
+chrome.storage?.local?.get("currentServer", (st) => {
+  if (st && st.currentServer) {
+    currentServer = st.currentServer;
+    document.getElementById("currentServerName").textContent =
+      SERVER_NAMES[currentServer];
+    refreshNow();
+  }
+});
 
 const $time = document.getElementById("currentTime");
 const $btn = document.getElementById("btnRefresh");
 const $list = document.getElementById("list");
 
+const $serverList = document.querySelector(".server-list");
+const $currentServerName = document.getElementById("currentServerName");
+const SERVER_NAMES = {
+  1: "루페온",
+  6: "카마인",
+  4: "아브렐슈드",
+  3: "아만",
+  5: "카단",
+  2: "실리안",
+  7: "카제로스",
+  8: "니나브",
+};
 /** 시간 구간 정의 */
 const TIME_PERIODS = [
   { start: { h: 4, m: 0 }, end: { h: 9, m: 30 }, name: "04:00~09:30" },
@@ -65,30 +86,39 @@ const WAITING_PERIODS = [
 function timeToMinutes(h, m) {
   return h * 60 + m;
 }
+/** 시간을 초로 변환 */
+function timeToSeconds(h, m, s = 0) {
+  return h * 3600 + m * 60 + s;
+}
 
 /** 현재 시간이 어느 구간에 속하는지 확인 */
 function getCurrentTimeInfo(now) {
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
-  const currentTotalMinutes = timeToMinutes(currentHour, currentMinute);
+  const currentSecond = now.getSeconds();
+  const currentTotalSeconds = timeToSeconds(
+    currentHour,
+    currentMinute,
+    currentSecond
+  );
 
   // 활동 구간 체크
   for (let i = 0; i < TIME_PERIODS.length; i++) {
     const period = TIME_PERIODS[i];
-    const startMinutes = timeToMinutes(period.start.h, period.start.m);
-    const endMinutes = timeToMinutes(period.end.h, period.end.m);
+    const startSeconds = timeToSeconds(period.start.h, period.start.m);
+    const endSeconds = timeToSeconds(period.end.h, period.end.m);
     const wrapsNextDay = !!(period?.nextDay || period?.end?.nextDay);
 
     if (wrapsNextDay) {
       if (
-        currentTotalMinutes >= startMinutes ||
-        currentTotalMinutes <= endMinutes
+        currentTotalSeconds >= startSeconds ||
+        currentTotalSeconds <= endSeconds
       ) {
-        const totalDuration = 24 * 60 - startMinutes + endMinutes;
+        const totalDuration = 24 * 3600 - startSeconds + endSeconds;
         const elapsed =
-          currentTotalMinutes >= startMinutes
-            ? currentTotalMinutes - startMinutes
-            : 24 * 60 - startMinutes + currentTotalMinutes;
+          currentTotalSeconds >= startSeconds
+            ? currentTotalSeconds - startSeconds
+            : 24 * 3600 - startSeconds + currentTotalSeconds;
         const progress = Math.min((elapsed / totalDuration) * 100, 100);
         const remaining = Math.max(totalDuration - elapsed, 0);
 
@@ -99,18 +129,18 @@ function getCurrentTimeInfo(now) {
           type: "active",
           period,
           progress,
-          remainingMinutes: remaining,
-          totalMinutes: totalDuration,
+          remainingSeconds: remaining,
+          totalSeconds: totalDuration,
           nextSpawn: { h: nextHour, m: nextMinute },
         };
       }
     } else {
       if (
-        currentTotalMinutes >= startMinutes &&
-        currentTotalMinutes <= endMinutes
+        currentTotalSeconds >= startSeconds &&
+        currentTotalSeconds <= endSeconds
       ) {
-        const totalDuration = endMinutes - startMinutes;
-        const elapsed = currentTotalMinutes - startMinutes;
+        const totalDuration = endSeconds - startSeconds;
+        const elapsed = currentTotalSeconds - startSeconds;
         const progress = Math.min((elapsed / totalDuration) * 100, 100);
         const remaining = Math.max(totalDuration - elapsed, 0);
 
@@ -122,8 +152,8 @@ function getCurrentTimeInfo(now) {
           type: "active",
           period,
           progress,
-          remainingMinutes: remaining,
-          totalMinutes: totalDuration,
+          remainingSeconds: remaining,
+          totalSeconds: totalDuration,
           nextSpawn: { h: nextHour, m: nextMinute },
         };
       }
@@ -133,15 +163,15 @@ function getCurrentTimeInfo(now) {
   // 대기 구간 체크
   for (let i = 0; i < WAITING_PERIODS.length; i++) {
     const period = WAITING_PERIODS[i];
-    const startMinutes = timeToMinutes(period.start.h, period.start.m);
-    const endMinutes = timeToMinutes(period.end.h, period.end.m);
+    const startSeconds = timeToSeconds(period.start.h, period.start.m);
+    const endSeconds = timeToSeconds(period.end.h, period.end.m);
 
     if (
-      currentTotalMinutes >= startMinutes &&
-      currentTotalMinutes <= endMinutes
+      currentTotalSeconds >= startSeconds &&
+      currentTotalSeconds <= endSeconds
     ) {
-      const totalDuration = endMinutes - startMinutes; // 30
-      const elapsed = currentTotalMinutes - startMinutes;
+      const totalDuration = endSeconds - startSeconds;
+      const elapsed = currentTotalSeconds - startSeconds;
       const progress = Math.min((elapsed / totalDuration) * 100, 100);
       const remaining = Math.max(totalDuration - elapsed, 0);
 
@@ -152,8 +182,8 @@ function getCurrentTimeInfo(now) {
         type: "waiting",
         period,
         progress,
-        remainingMinutes: remaining,
-        totalMinutes: totalDuration,
+        remainingSeconds: remaining,
+        totalSeconds: totalDuration,
         nextSpawn: { h: nextHour, m: nextMinute },
       };
     }
@@ -179,11 +209,16 @@ function tick() {
 
 /** 프로그레스 바 UI 업데이트 */
 function updateProgressDisplay(timeInfo) {
-  const { type, progress, remainingMinutes, nextSpawn } = timeInfo;
-  const hours = Math.floor(remainingMinutes / 60);
-  const minutes = remainingMinutes % 60;
+  const { type, progress, remainingSeconds, nextSpawn } = timeInfo;
+  const hours = Math.floor(remainingSeconds / 3600);
+  const minutes = Math.floor((remainingSeconds % 3600) / 60);
+  const seconds = remainingSeconds % 60;
   const timeRemaining =
-    hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+    hours > 0
+      ? `${hours}시간 ${minutes}분 ${seconds}초`
+      : minutes > 0
+      ? `${minutes}분 ${seconds}초`
+      : `${seconds}초`;
 
   const progressBarClass =
     type === "waiting" ? "progress-waiting" : "progress-active";
@@ -204,9 +239,9 @@ function updateProgressDisplay(timeInfo) {
       </div>
       <div class="progress-bar">
         <div class="progress-fill ${progressBarClass}" style="width: ${progress.toFixed(
-    1
+    2
   )}%"></div>
-        <div class="progress-text">${progress.toFixed(1)}%</div>
+        <div class="progress-text">${progress.toFixed(2)}%</div>
       </div>
     </div>
   `;
@@ -359,7 +394,7 @@ async function refreshNow() {
       return;
     }
     const data = await fetchMerchant({
-      server: 3,
+      server: currentServer,
       before: new Date().toISOString(),
     });
     await renderList(data);
@@ -379,11 +414,26 @@ async function refreshNow() {
 }
 
 if ($btn) $btn.addEventListener("click", refreshNow);
-
+function openServerList() {
+  if (
+    $serverList.style.display === "none" ||
+    $serverList.style.display === ""
+  ) {
+    $serverList.style.display = "block";
+  } else {
+    $serverList.style.display = "none";
+  }
+}
+if ($currentServerName && $serverList) {
+  $currentServerName.addEventListener("click", openServerList);
+  $serverList.style.display = "none";
+}
 function init() {
-  setInterval(tick, 1000);
+  setInterval(tick, 16); // 60fps로 더 자주 호출
   tick();
   $list.innerHTML = "";
+  document.getElementById("currentServerName").textContent =
+    SERVER_NAMES[currentServer];
   refreshNow();
   /** 주기적 호출 */
   setInterval(refreshNow, 1 * 60 * 1000); // 1분마다 호출
@@ -404,4 +454,25 @@ function initNotifyToggle() {
     Storage.set({ [STORAGE_KEY_NOTIFY]: !!e.target.checked });
   });
 }
-document.addEventListener("DOMContentLoaded", initNotifyToggle);
+
+document.addEventListener("DOMContentLoaded", function () {
+  initNotifyToggle();
+  const serverList = document.querySelector(".server-list");
+  if (serverList) {
+    serverList.querySelectorAll("div").forEach(function (div) {
+      div.addEventListener("click", function () {
+        if (parseInt(div.id, 10) === currentServer) {
+          serverList.style.display = "none";
+          return;
+        }
+        $list.innerHTML = "";
+        currentServer = parseInt(div.id, 10);
+        document.getElementById("currentServerName").textContent =
+          SERVER_NAMES[currentServer];
+        chrome.storage?.local?.set({ currentServer });
+        serverList.style.display = "none";
+        refreshNow();
+      });
+    });
+  }
+});
