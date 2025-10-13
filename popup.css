@@ -327,6 +327,23 @@ body {
   font-weight: bold;
   border-radius: 6px;
 }
+.center-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 220px;
+  max-width: 90vw;
+  background: #fff;
+  color: #e53e3e;
+  border-radius: 16px;
+  border: 2px solid #e53e3e;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  padding: 32px 24px;
+  text-align: center;
+  font-size: 18px;
+  z-index: 9999;
+}
 
 /* ------------------------------------------- */
 /* 2. 확장 프로그램 팝업 전용 스타일 (고정 너비) */

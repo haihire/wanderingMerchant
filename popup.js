@@ -1,8 +1,11 @@
 // popup.js
+
 // 페이지가 확장 프로그램 팝업으로 실행되었는지 확인
 if (window.location.protocol === "chrome-extension:") {
   document.body.classList.add("is-extension");
 }
+
+$centerErrorMsg = document.getElementById("centerErrorMsg");
 
 let merchantDataCache = null;
 
@@ -391,6 +394,7 @@ async function refreshNow() {
   try {
     if (timeInfo.type === "waiting") {
       $list.innerHTML = `<div class="empty-state">현재는 다음 상인을 기다리고 있습니다</div>`;
+      if ($centerErrorMsg) $centerErrorMsg.style.display = "none";
       return;
     }
     const data = await fetchMerchant({
@@ -398,11 +402,20 @@ async function refreshNow() {
       before: new Date().toISOString(),
     });
     await renderList(data);
+    if ($centerErrorMsg) $centerErrorMsg.style.display = "none";
   } catch (e) {
     console.error(e);
-    $list.innerHTML = `<div class="error-state">⚠️ 에러 발생: ${escapeHtml(
-      String(e.message || e)
-    )}</div>`;
+    if ($centerErrorMsg) {
+      let msg = "⚠️ 에러 발생<br>";
+      if (e && e.message) {
+        msg += escapeHtml(e.message);
+      } else {
+        msg += escapeHtml(String(e));
+      }
+      $centerErrorMsg.innerHTML = msg;
+      $centerErrorMsg.style.display = "block";
+    }
+    $list.innerHTML = "";
   } finally {
     if ($btn) {
       $btn.disabled = false;
@@ -475,23 +488,4 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
   }
-});
-
-window.onerror = function (message, source, lineno, colno, error) {
-  alert(
-    "ERROR: " +
-      message +
-      "\n" +
-      source +
-      ":" +
-      lineno +
-      ":" +
-      colno +
-      "\n" +
-      error
-  );
-};
-
-window.addEventListener("unhandledrejection", function (event) {
-  alert("Promise ERROR: " + event.reason);
 });
