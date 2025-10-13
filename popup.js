@@ -5,8 +5,6 @@ if (window.location.protocol === "chrome-extension:") {
   document.body.classList.add("is-extension");
 }
 
-$centerErrorMsg = document.getElementById("centerErrorMsg");
-
 let merchantDataCache = null;
 
 /* ===== 확장/웹 공통 스토리지 shim ===== */
@@ -24,14 +22,23 @@ const Storage = {
   },
 };
 let currentServer = 3;
-chrome.storage?.local?.get("currentServer", (st) => {
-  if (st && st.currentServer) {
-    currentServer = st.currentServer;
-    document.getElementById("currentServerName").textContent =
-      SERVER_NAMES[currentServer];
-    refreshNow();
-  }
-});
+if (typeof chrome === "undefined" || !chrome.storage?.local) {
+  // 크롬 확장 환경이 아니면 localStorage 사용
+  const saved = localStorage.getItem("currentServer");
+  if (saved) currentServer = Number(saved);
+  document.getElementById("currentServerName").textContent =
+    SERVER_NAMES[currentServer];
+  refreshNow();
+} else {
+  chrome.storage.local.get("currentServer", (st) => {
+    if (st && st.currentServer) {
+      currentServer = st.currentServer;
+      document.getElementById("currentServerName").textContent =
+        SERVER_NAMES[currentServer];
+      refreshNow();
+    }
+  });
+}
 
 const $time = document.getElementById("currentTime");
 const $btn = document.getElementById("btnRefresh");
@@ -394,7 +401,6 @@ async function refreshNow() {
   try {
     if (timeInfo.type === "waiting") {
       $list.innerHTML = `<div class="empty-state">현재는 다음 상인을 기다리고 있습니다</div>`;
-      if ($centerErrorMsg) $centerErrorMsg.style.display = "none";
       return;
     }
     const data = await fetchMerchant({
@@ -402,19 +408,8 @@ async function refreshNow() {
       before: new Date().toISOString(),
     });
     await renderList(data);
-    if ($centerErrorMsg) $centerErrorMsg.style.display = "none";
   } catch (e) {
     console.error(e);
-    if ($centerErrorMsg) {
-      let msg = "⚠️ 에러 발생<br>";
-      if (e && e.message) {
-        msg += escapeHtml(e.message);
-      } else {
-        msg += escapeHtml(String(e));
-      }
-      $centerErrorMsg.innerHTML = msg;
-      $centerErrorMsg.style.display = "block";
-    }
     $list.innerHTML = "";
   } finally {
     if ($btn) {
