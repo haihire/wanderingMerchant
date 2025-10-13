@@ -22,22 +22,26 @@ const Storage = {
   },
 };
 let currentServer = 3;
+function setServerAndRefresh(server) {
+  currentServer = server;
+  document.getElementById("currentServerName").textContent =
+    SERVER_NAMES[currentServer];
+  refreshNow();
+}
 if (IS_EXT) {
   chrome.storage?.local?.get("currentServer", (st) => {
     if (st && st.currentServer) {
-      currentServer = st.currentServer;
-      document.getElementById("currentServerName").textContent =
-        SERVER_NAMES[currentServer];
-      refreshNow();
+      setServerAndRefresh(st.currentServer);
+    } else {
+      setServerAndRefresh(3);
     }
   });
 } else {
   const lsServer = localStorage.getItem("currentServer");
   if (lsServer) {
-    currentServer = parseInt(lsServer, 10);
-    document.getElementById("currentServerName").textContent =
-      SERVER_NAMES[currentServer];
-    refreshNow();
+    setServerAndRefresh(parseInt(lsServer, 10));
+  } else {
+    setServerAndRefresh(3);
   }
 }
 
@@ -397,11 +401,11 @@ async function refreshNow() {
     if (span) span.textContent = "로딩";
   }
 
-  const now = new Date();
-  const timeInfo = getCurrentTimeInfo(now);
-
   try {
-    if (timeInfo.type === "waiting") {
+    const now = new Date();
+    const timeInfo = getCurrentTimeInfo(now);
+
+    if (timeInfo && timeInfo.type === "waiting") {
       $list.innerHTML = `<div class="empty-state">현재는 다음 상인을 기다리고 있습니다</div>`;
       return;
     }
@@ -442,9 +446,8 @@ function init() {
   setInterval(tick, 16); // 60fps로 더 자주 호출
   tick();
   $list.innerHTML = "";
-  document.getElementById("currentServerName").textContent =
-    SERVER_NAMES[currentServer];
-  refreshNow();
+  // 서버명은 setServerAndRefresh에서 이미 표시됨
+  // refreshNow(); // 중복 호출 제거
   /** 주기적 호출 */
   setInterval(refreshNow, 1 * 60 * 1000); // 1분마다 호출
 }
@@ -476,17 +479,13 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         $list.innerHTML = "";
-        currentServer = parseInt(div.id, 10);
-        document.getElementById("currentServerName").textContent =
-          SERVER_NAMES[currentServer];
+        setServerAndRefresh(parseInt(div.id, 10));
         if (IS_EXT) {
           chrome.storage?.local?.set({ currentServer });
         } else {
           localStorage.setItem("currentServer", currentServer);
         }
-
         serverList.style.display = "none";
-        refreshNow();
       });
     });
   }
