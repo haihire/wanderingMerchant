@@ -476,3 +476,22 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+
+window.onerror = function (message, source, lineno, colno, error) {
+  alert(
+    "ERROR: " +
+      message +
+      "\n" +
+      source +
+      ":" +
+      lineno +
+      ":" +
+      colno +
+      "\n" +
+      error
+  );
+};
+
+window.addEventListener("unhandledrejection", function (event) {
+  alert("Promise ERROR: " + event.reason);
+});
