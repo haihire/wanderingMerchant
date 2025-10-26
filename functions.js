@@ -9,6 +9,7 @@ import {
   Storage,
   STORAGE_KEY_NOTIFY,
   TIME_PERIODS,
+  WAITING_PERIODS,
 } from "./env.js";
 // 변경상수들은 여기서
 let merchantDataCache = null;

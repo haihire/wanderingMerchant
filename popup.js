@@ -1,5 +1,12 @@
 // popup.js
-import { IS_EXT, $btn, $list, $serverList, $currentServerName } from "./env.js";
+import {
+  IS_EXT,
+  $btn,
+  $list,
+  $serverList,
+  $currentServerName,
+  cacheDom,
+} from "./env.js";
 import {
   currentServer,
   init,
@@ -22,6 +29,7 @@ if ($currentServerName && $serverList) {
 if ($btn) $btn.addEventListener("click", refreshNow);
 
 document.addEventListener("DOMContentLoaded", function () {
+  cacheDom();
   initNotifyToggle();
   const serverList = document.querySelector(".server-list");
   if (serverList) {

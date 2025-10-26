@@ -1,4 +1,15 @@
 //env.js
+
+// DOM 요소 캐시
+export let $time, $btn, $list, $serverList, $currentServerName;
+export function cacheDom() {
+  $time = document.getElementById("currentTime");
+  $btn = document.getElementById("btnRefresh");
+  $list = document.getElementById("list");
+  $serverList = document.querySelector(".server-list");
+  $currentServerName = document.getElementById("currentServerName");
+}
+
 // 환경 변수 및 상수 정의
 export const API_BASE = "https://api.korlark.com/lostark/merchant/reports";
 export const STORAGE_KEY_NOTIFY = "notifyEnabled";
@@ -16,12 +27,7 @@ export const Storage = {
     cb && cb();
   },
 };
-// DOM 요소 캐시
-export const $time = document.getElementById("currentTime");
-export const $btn = document.getElementById("btnRefresh");
-export const $list = document.getElementById("list");
-export const $serverList = document.querySelector(".server-list");
-export const $currentServerName = document.getElementById("currentServerName");
+
 /** 시간 구간 정의 */
 export const TIME_PERIODS = [
   { start: { h: 4, m: 0 }, end: { h: 9, m: 30 }, name: "04:00~09:30" },
