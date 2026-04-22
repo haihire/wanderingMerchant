@@ -13,6 +13,8 @@ export function cacheDom() {
 // 환경 변수 및 상수 정의
 export const API_BASE = "https://api.korlark.com/lostark/merchant/reports";
 export const STORAGE_KEY_NOTIFY = "notifyEnabled";
+export const STORAGE_KEY_SET_FILTERS = "setNameFilters";
+export const STORAGE_KEY_SELECTED_CARDS = "selectedCards";
 
 export const IS_EXT = typeof chrome !== "undefined" && chrome?.storage?.local;
 export const Storage = {

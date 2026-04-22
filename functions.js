@@ -8,14 +8,18 @@ import {
   SERVER_NAMES,
   Storage,
   STORAGE_KEY_NOTIFY,
+  STORAGE_KEY_SELECTED_CARDS,
+  STORAGE_KEY_SET_FILTERS,
   TIME_PERIODS,
   WAITING_PERIODS,
 } from "./env.js";
-import { resolveSetNamesByItemName } from "./setNameMap.js";
+import { resolveSetNamesByItemName, SET_NAME_TYPES } from "./setNameMap.js";
 // 변경상수들은 여기서
 let merchantDataCache = null;
 let beforeReportIds = null;
 let currentServer = 3;
+let activeSetFilters = [];
+let selectedCardIds = [];
 export { currentServer };
 /** 시간을 초로 변환 */
 export function timeToSeconds(h, m, s = 0) {
@@ -232,6 +236,236 @@ function escapeHtml(str) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
 }
+
+function getItemSetNameList(item) {
+  if (!item?.setName) return [];
+  return item.setName
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+function isSetFilterMatched(item) {
+  if (!Array.isArray(activeSetFilters) || activeSetFilters.length === 0) {
+    return true;
+  }
+  const setNameList = getItemSetNameList(item);
+  if (setNameList.length === 0) return false;
+  return setNameList.some((name) => activeSetFilters.includes(name));
+}
+
+function getCardSelectionKey(item) {
+  return String(item?.id ?? "");
+}
+
+function isCardSelected(item) {
+  const key = getCardSelectionKey(item);
+  return key ? selectedCardIds.includes(key) : false;
+}
+
+function setCardSelected(item, selected) {
+  const key = getCardSelectionKey(item);
+  if (!key) return;
+  if (selected) {
+    if (!selectedCardIds.includes(key)) {
+      selectedCardIds = [...selectedCardIds, key];
+    }
+  } else {
+    selectedCardIds = selectedCardIds.filter((id) => id !== key);
+  }
+}
+
+function saveSelectedCards() {
+  return new Promise((resolve) => {
+    Storage.set({ [STORAGE_KEY_SELECTED_CARDS]: selectedCardIds }, resolve);
+  });
+}
+
+function updateSelectedCardCount(count) {
+  const $count = document.getElementById("selectedCardCount");
+  if ($count) {
+    if (activeSetFilters.length === 1) {
+      $count.textContent = `${activeSetFilters[0]}에 ${count}개`;
+    } else {
+      $count.textContent = `선택 ${count}개`;
+    }
+  }
+}
+
+function updateSetFilterSummaryCount(count) {
+  const $summaryCount = document.querySelector(".set-filter-summary-count");
+  if ($summaryCount) {
+    $summaryCount.textContent = `${count}개`;
+  }
+}
+
+function renderSetFilterButtons() {
+  const $wrap = document.getElementById("setFilterButtons");
+  if (!$wrap) return;
+
+  const selectedCount = activeSetFilters.length;
+  const sortedSetNames = [...SET_NAME_TYPES].sort((a, b) => {
+    const aSelected = activeSetFilters.includes(a);
+    const bSelected = activeSetFilters.includes(b);
+    if (aSelected !== bSelected) return aSelected ? -1 : 1;
+    return a.localeCompare(b, "ko");
+  });
+  const summaryText =
+    selectedCount === 0
+      ? "전체"
+      : selectedCount === 1
+        ? activeSetFilters[0]
+        : `${activeSetFilters[0]} 외 ${selectedCount - 1}`;
+  const summaryCountText = `0개`;
+
+  const html = [
+    `<details class="set-filter-dropdown">
+      <summary class="set-filter-summary">
+        <span class="set-filter-summary-text">${escapeHtml(summaryText)}</span>
+        <span class="set-filter-summary-count">${summaryCountText}</span>
+      </summary>
+      <div class="set-filter-menu">
+        <label class="set-filter-item ${
+          activeSetFilters.length === 0 ? "is-active" : ""
+        }">
+          <input
+            type="checkbox"
+            class="set-filter-checkbox"
+            data-set-name=""
+            ${activeSetFilters.length === 0 ? "checked" : ""}
+          />
+          <span>전체</span>
+        </label>
+        ${sortedSetNames
+          .map(
+            (name) =>
+              `<label class="set-filter-item ${
+                activeSetFilters.includes(name) ? "is-active" : ""
+              }">
+              <input
+                type="checkbox"
+                class="set-filter-checkbox"
+                data-set-name="${escapeHtml(name)}"
+                ${activeSetFilters.includes(name) ? "checked" : ""}
+              />
+              <span>${escapeHtml(name)}</span>
+            </label>`,
+          )
+          .join("")}
+      </div>
+    </details>`,
+  ].join("");
+
+  $wrap.innerHTML = html;
+
+  $wrap.querySelectorAll(".set-filter-checkbox").forEach((checkbox) => {
+    checkbox.addEventListener("change", async (e) => {
+      const setName = e.target.dataset.setName || "";
+      const checked = !!e.target.checked;
+
+      if (!setName) {
+        if (checked) {
+          activeSetFilters = [];
+        } else {
+          activeSetFilters = [...SET_NAME_TYPES];
+        }
+      } else {
+        if (checked) {
+          if (!activeSetFilters.includes(setName)) {
+            activeSetFilters = [...activeSetFilters, setName];
+          }
+        } else {
+          activeSetFilters = activeSetFilters.filter((v) => v !== setName);
+        }
+
+        // 모든 타입이 선택되면 '전체'와 동일하게 취급
+        if (activeSetFilters.length === SET_NAME_TYPES.length) {
+          activeSetFilters = [];
+        }
+      }
+
+      await new Promise((resolve) => {
+        Storage.set({ [STORAGE_KEY_SET_FILTERS]: activeSetFilters }, resolve);
+      });
+
+      renderSetFilterButtons();
+      beforeReportIds = null;
+      refreshNow();
+    });
+  });
+}
+
+export function initSetNameFilter() {
+  Storage.get(STORAGE_KEY_SET_FILTERS, (st) => {
+    const saved = st[STORAGE_KEY_SET_FILTERS];
+    activeSetFilters = Array.isArray(saved)
+      ? saved.filter((v) => SET_NAME_TYPES.includes(v))
+      : [];
+    renderSetFilterButtons();
+  });
+}
+
+function sortCardsBySelection(items) {
+  return [...items].sort((a, b) => {
+    const aSelected = isCardSelected(a);
+    const bSelected = isCardSelected(b);
+    if (aSelected !== bSelected) return aSelected ? -1 : 1;
+    return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+  });
+}
+
+function renderCardItems(filteredItems) {
+  const orderedItems = sortCardsBySelection(filteredItems);
+  const selectedTotalCount = orderedItems.filter((item) =>
+    isCardSelected(item),
+  ).length;
+  const selectedScopedCount = orderedItems.filter(
+    (item) => isCardSelected(item) && isSetFilterMatched(item),
+  ).length;
+
+  updateSelectedCardCount(
+    activeSetFilters.length > 0 ? selectedScopedCount : selectedTotalCount,
+  );
+  updateSetFilterSummaryCount(selectedScopedCount);
+  $list.innerHTML = "";
+
+  for (let i = 0; i < orderedItems.length; i++) {
+    const item = orderedItems[i];
+    const selected = isCardSelected(item);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `card ${i}${selected ? " is-selected" : ""}`;
+    card.setAttribute("aria-pressed", selected ? "true" : "false");
+    card.innerHTML = `
+      <div class="card-content">
+        <div class="card-top-row">
+          ${
+            item.name
+              ? `<div class="card-name">${escapeHtml(item.name)}${
+                  item.setName ? ` / ${escapeHtml(item.setName)}` : ""
+                }</div>`
+              : ""
+          }
+          ${selected ? '<span class="card-selected-badge">선택됨</span>' : ""}
+        </div>
+        ${
+          item.regionName
+            ? `<div class="card-region">${escapeHtml(item.regionName)}</div>`
+            : ""
+        }
+      </div>
+    `;
+
+    card.addEventListener("click", async () => {
+      setCardSelected(item, !isCardSelected(item));
+      await saveSelectedCards();
+      renderCardItems(filteredItems);
+    });
+
+    $list.appendChild(card);
+  }
+}
+
 export async function renderList(data) {
   if (!Array.isArray(data) || data.length === 0) {
     $list.innerHTML = `<div class="empty-state">데이터를 찾을 수 없습니다 잠시 후 다시 시도해주세요</div>`;
@@ -273,33 +507,16 @@ export async function renderList(data) {
     }
   }
 
-  if (requireItems.length === 0) {
-    $list.innerHTML = `<div class="empty-state">현재 전설/세트 카드가 출현하지 않았습니다</div>`;
+  const filteredItems = requireItems;
+
+  if (filteredItems.length === 0) {
+    updateSelectedCardCount(0);
+    updateSetFilterSummaryCount(0);
+    $list.innerHTML = `<div class="empty-state">현재 카드가 없습니다</div>`;
     return;
   }
 
-  for (let i = 0; i < requireItems.length; i++) {
-    const item = requireItems[i];
-    const card = document.createElement("div");
-    card.className = "card " + i;
-    card.innerHTML = `
-      <div class="card-content">
-        ${
-          item.name
-            ? `<div class="card-name">${escapeHtml(item.name)}${
-                item.setName ? ` / ${escapeHtml(item.setName)}` : ""
-              }</div>`
-            : ""
-        }
-        ${
-          item.regionName
-            ? `<div class="card-region">${escapeHtml(item.regionName)}</div>`
-            : ""
-        }
-      </div>
-    `;
-    $list.appendChild(card);
-  }
+  renderCardItems(filteredItems);
 }
 export async function refreshNow() {
   const orig = $btn?.querySelector(".refresh-text")?.textContent || "갱신";
@@ -355,6 +572,15 @@ export function openServerList() {
 }
 
 export function init() {
+  initSetNameFilter();
+  Storage.get(STORAGE_KEY_SELECTED_CARDS, (st) => {
+    const saved = st[STORAGE_KEY_SELECTED_CARDS];
+    selectedCardIds = Array.isArray(saved)
+      ? saved.map((v) => String(v)).filter(Boolean)
+      : [];
+  });
+  updateSelectedCardCount(0);
+  updateSetFilterSummaryCount(0);
   setInterval(tick, 16); // 60fps로 더 자주 호출
   tick();
   $list.innerHTML = "";

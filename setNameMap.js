@@ -93,6 +93,14 @@ const ITEM_TO_SET_NAMES = (() => {
   return map;
 })();
 
+export const SET_NAME_TYPES = (() => {
+  const set = new Set();
+  for (const [setName] of SET_NAME_ENTRIES) {
+    set.add(setName);
+  }
+  return Array.from(set);
+})();
+
 export function resolveSetNamesByItemName(itemName) {
   const key = normalizeName(itemName);
   if (!key) return "";

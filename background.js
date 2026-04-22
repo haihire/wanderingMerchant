@@ -16,6 +16,64 @@ const TIME_PERIODS = [
   },
 ];
 
+function normalizeName(name) {
+  return String(name || "")
+    .replaceAll(/\s+/g, "")
+    .replaceAll(",", "");
+}
+
+const SET_NAME_ITEM_KEYS = new Set(
+  [
+    "샨디",
+    "아제나&이난나",
+    "니나브",
+    "카단",
+    "바훈투르",
+    "실리안",
+    "웨이",
+    "발탄",
+    "일리아칸",
+    "비아키스",
+    "아브렐슈드",
+    "카멘",
+    "쿠크세이튼",
+    "베아트리스",
+    "에스더 루테란",
+    "에버그레이스",
+    "페데리코",
+    "미한",
+    "가디언 루",
+    "파한",
+    "호동",
+    "객주도사",
+    "월향도사",
+    "수령도사",
+    "에스더 시엔",
+    "부활하는 카제로스",
+    "춤추는 쿠크세이튼",
+    "교활한 카마인",
+    "심연의 방랑자",
+    "각성한 진저웨일",
+    "유적을 찾은 카단",
+    "에키드나",
+    "악몽의 아브렐슈드",
+    "라제니스를 이끄는 니나브",
+    "절망의 카멘",
+    "진저웨일",
+    "광기를 잃은 쿠크세이튼",
+    "찢겨진 발탄",
+    "피요르긴을 휘두르는 바훈투르",
+    "모르페",
+    "악몽의 헬카서스",
+    "데런 아만",
+    "폭풍의 베히모스",
+    "전장을 지배하는 아제나",
+    "도철을 다루는 웨이",
+    "칠흑의 숭배자 킬리네사",
+    "타무트",
+  ].map(normalizeName),
+);
+
 let merchantDataCache = null;
 
 async function getMerchantData() {
@@ -32,8 +90,16 @@ function findItemInMerchantData(merchantData, itemId) {
   const regions = merchantData?.initialData?.scheme?.regions || [];
   for (const region of regions) {
     for (const item of region.items || []) {
-      if (item.id === itemId)
-        return { ...item, regionName: region.name, npcName: region.npcName };
+      if (item.id === itemId) {
+        const hasSetName =
+          !!item.setName || SET_NAME_ITEM_KEYS.has(normalizeName(item.name));
+        return {
+          ...item,
+          setName: hasSetName ? item.setName || "set" : "",
+          regionName: region.name,
+          npcName: region.npcName,
+        };
+      }
     }
   }
   return null;
@@ -48,7 +114,7 @@ async function fetchAndProcessMerchantData() {
   url.searchParams.set("server", String(server));
   url.searchParams.set("before", new Date().toISOString());
   console.log(
-    `[${new Date().toLocaleTimeString()}] API 호출: ${url.toString()}`
+    `[${new Date().toLocaleTimeString()}] API 호출: ${url.toString()}`,
   );
   const res = await fetch(url.toString(), {
     headers: { Accept: "application/json" },
@@ -73,7 +139,11 @@ async function fetchAndProcessMerchantData() {
     for (const report of reports) {
       for (const itemId of report.itemIds || []) {
         const found = findItemInMerchantData(merchantData, itemId);
-        if (found && found.type === 1 && found.grade === 4) {
+        if (
+          found &&
+          found.type === 1 &&
+          (found.grade === 4 || !!found.setName)
+        ) {
           hits.push({
             ...found,
             uniqueId: `${report.id}-${found.id}`,
@@ -103,7 +173,7 @@ async function scheduleNextPeriodAlarm() {
   const date = getNextStartFromNow();
   const when = date.getTime();
   console.log(
-    `[${new Date().toLocaleTimeString()}] 다음 알람 예약: ${date.toLocaleString()}`
+    `[${new Date().toLocaleTimeString()}] 다음 알람 예약: ${date.toLocaleString()}`,
   );
   chrome.alarms.create(ALARM_NAME, { when });
 }
@@ -124,18 +194,18 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== ALARM_NAME) return;
   console.log(
     `%c[${new Date().toLocaleTimeString()}] 알람 발생: ${alarm.name}`,
-    "color: #28a745; font-weight: bold;"
+    "color: #28a745; font-weight: bold;",
   );
 
   if (!(await isNotifyOn())) {
     console.log(
-      `[${new Date().toLocaleTimeString()}] 알림이 꺼져있어, 작업을 중단합니다.`
+      `[${new Date().toLocaleTimeString()}] 알림이 꺼져있어, 작업을 중단합니다.`,
     );
     return;
   }
 
   console.log(
-    `[${new Date().toLocaleTimeString()}] 새로운 시간대 시작. 상태를 초기화합니다.`
+    `[${new Date().toLocaleTimeString()}] 새로운 시간대 시작. 상태를 초기화합니다.`,
   );
   notifiedCardIds.clear();
   hasFoundInitialData = false;
@@ -145,12 +215,12 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   await scheduleNextPeriodAlarm();
 
   console.log(
-    `[${new Date().toLocaleTimeString()}] 서버 데이터 확인을 위한 폴링을 시작합니다. (10분 간격)`
+    `[${new Date().toLocaleTimeString()}] 서버 데이터 확인을 위한 폴링을 시작합니다. (10분 간격)`,
   );
 
   const poll = async () => {
     console.log(
-      `[${new Date().toLocaleTimeString()}] -> 폴링 실행: 서버 데이터 요청...`
+      `[${new Date().toLocaleTimeString()}] -> 폴링 실행: 서버 데이터 요청...`,
     );
     try {
       const { reports, hits: allHits } = await fetchAndProcessMerchantData();
@@ -159,27 +229,28 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
         : "";
       if (currentReportIds === previousReportIds) {
         console.log(
-          `[${new Date().toLocaleTimeString()}] <-- 데이터 변경 없음. 건너뜁니다.`
+          `[${new Date().toLocaleTimeString()}] <-- 데이터 변경 없음. 건너뜁니다.`,
         );
         return;
       }
       console.log(
         `[${new Date().toLocaleTimeString()}] <-- 새로운 데이터 수신. 총 ${
           allHits.length
-        }개의 전설 카드 발견.`
+        }개의 알림 대상 카드 발견.`,
       );
       previousReportIds = currentReportIds;
 
       // 기존 카드와 비교하여 새로 추가된 카드 알림 (원하는 로직 유지)
       const newHits = allHits.filter(
-        (hit) => !notifiedCardIds.has(hit.uniqueId)
+        (hit) => !notifiedCardIds.has(hit.uniqueId),
       );
       if (newHits.length > 0) {
         notifyUser(newHits);
         newHits.forEach((hit) => notifiedCardIds.add(hit.uniqueId));
+
         console.log(
           `[${new Date().toLocaleTimeString()}] 알림 보낸 카드 ID 기록:`,
-          newHits.map((h) => h.uniqueId)
+          newHits.map((h) => h.uniqueId),
         );
       }
     } catch (e) {
@@ -199,9 +270,9 @@ function notifyUser(hits) {
     `%c[${new Date().toLocaleTimeString()}] *** 새로운 카드 ${
       hits.length
     }개 발견! 알림 생성. ***`,
-    "color: #007bff; font-weight: bold;"
+    "color: #007bff; font-weight: bold;",
   );
-  const title = "🃏 새로운 전설 카드 출현!";
+  const title = "떠돌이 상인 윈도우 알림";
   const msg = hits
     .map((hit) => `${hit.name} - 지역: ${hit.regionName}`)
     .join("\n");
@@ -219,7 +290,7 @@ function notifyUser(hits) {
 async function runImmediateCheck() {
   if (!(await isNotifyOn())) {
     console.log(
-      `[${new Date().toLocaleTimeString()}] 시작 시 확인: 알림이 꺼져있어 건너뜁니다.`
+      `[${new Date().toLocaleTimeString()}] 시작 시 확인: 알림이 꺼져있어 건너뜁니다.`,
     );
     return;
   }
@@ -245,13 +316,13 @@ async function runImmediateCheck() {
 
   if (!isActiveNow) {
     console.log(
-      `[${new Date().toLocaleTimeString()}] 시작 시 확인: 현재는 상인 활동 시간이 아니므로 건너뜁니다.`
+      `[${new Date().toLocaleTimeString()}] 시작 시 확인: 현재는 상인 활동 시간이 아니므로 건너뜁니다.`,
     );
     return;
   }
 
   console.log(
-    `[${new Date().toLocaleTimeString()}] 시작 시 확인: 현재 활동 시간이므로 즉시 데이터를 확인합니다.`
+    `[${new Date().toLocaleTimeString()}] 시작 시 확인: 현재 활동 시간이므로 즉시 데이터를 확인합니다.`,
   );
   try {
     const { hits } = await fetchAndProcessMerchantData();
@@ -271,7 +342,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   console.log(
     `[${new Date().toLocaleTimeString()}] 알림 설정 변경됨: ${
       enabled ? "ON" : "OFF"
-    }`
+    }`,
   );
   if (enabled) {
     await scheduleNextPeriodAlarm();
@@ -284,7 +355,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
 /* 설치/시작 */
 chrome.runtime.onInstalled.addListener(async () => {
   console.log(
-    `[${new Date().toLocaleTimeString()}] 확장 프로그램 설치됨/업데이트됨.`
+    `[${new Date().toLocaleTimeString()}] 확장 프로그램 설치됨/업데이트됨.`,
   );
   const st = await chrome.storage.local.get(STORAGE_KEY_NOTIFY);
   if (typeof st[STORAGE_KEY_NOTIFY] === "undefined") {

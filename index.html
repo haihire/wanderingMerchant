@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
@@ -33,9 +33,15 @@
           <span class="refresh-text">갱신</span>
         </button>
       </div>
-      <!-- 전설 카드 알림 토글 -->
+      <div class="set-filter-panel">
+        <div class="set-filter-title">
+          세트 필터 <span id="selectedCardCount">선택 0개</span>
+        </div>
+        <div id="setFilterButtons" class="set-filter-buttons"></div>
+      </div>
+      <!-- 윈도우 알림 토글 -->
       <div class="notify-toggle">
-        <label for="toggleNotify">전설 카드 알림</label>
+        <label for="toggleNotify">윈도우 알림</label>
         <input id="toggleNotify" type="checkbox" />
       </div>
       <div class="time-section">
