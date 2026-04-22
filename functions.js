@@ -4,180 +4,21 @@ import {
   $btn,
   $list,
   $serverList,
-  $time,
-  SERVER_NAMES,
   Storage,
   STORAGE_KEY_NOTIFY,
   STORAGE_KEY_SELECTED_CARDS,
-  STORAGE_KEY_SET_FILTERS,
-  TIME_PERIODS,
-  WAITING_PERIODS,
+  SERVER_NAMES,
 } from "./env.js";
-import { resolveSetNamesByItemName, SET_NAME_TYPES } from "./setNameMap.js";
+import { resolveSetNamesByItemName } from "./setNameMap.js";
 // 변경상수들은 여기서
 let merchantDataCache = null;
 let beforeReportIds = null;
 let currentServer = 3;
-let activeSetFilters = [];
 let selectedCardIds = [];
+let activeTab = "all"; // 'all' | 'favorites'
+let _lastFilteredItems = [];
+let allCardItems = [];
 export { currentServer };
-/** 시간을 초로 변환 */
-export function timeToSeconds(h, m, s = 0) {
-  return h * 3600 + m * 60 + s;
-}
-/** 현재 시간이 어느 구간에 속하는지 확인 */
-export function getCurrentTimeInfo(now) {
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const currentSecond = now.getSeconds();
-  const currentTotalSeconds = timeToSeconds(
-    currentHour,
-    currentMinute,
-    currentSecond,
-  );
-
-  // 활동 구간 체크
-  for (let i = 0; i < TIME_PERIODS.length; i++) {
-    const period = TIME_PERIODS[i];
-    const startSeconds = timeToSeconds(period.start.h, period.start.m);
-    const endSeconds = timeToSeconds(period.end.h, period.end.m);
-    const wrapsNextDay = !!(period?.nextDay || period?.end?.nextDay);
-
-    if (wrapsNextDay) {
-      if (
-        currentTotalSeconds >= startSeconds ||
-        currentTotalSeconds <= endSeconds
-      ) {
-        const totalDuration = 24 * 3600 - startSeconds + endSeconds;
-        const elapsed =
-          currentTotalSeconds >= startSeconds
-            ? currentTotalSeconds - startSeconds
-            : 24 * 3600 - startSeconds + currentTotalSeconds;
-        const progress = Math.min((elapsed / totalDuration) * 100, 100);
-        const remaining = Math.max(totalDuration - elapsed, 0);
-
-        const nextHour = TIME_PERIODS[0].start.h;
-        const nextMinute = TIME_PERIODS[0].start.m;
-
-        return {
-          type: "active",
-          period,
-          progress,
-          remainingSeconds: remaining,
-          totalSeconds: totalDuration,
-          nextSpawn: { h: nextHour, m: nextMinute },
-        };
-      }
-    } else {
-      if (
-        currentTotalSeconds >= startSeconds &&
-        currentTotalSeconds <= endSeconds
-      ) {
-        const totalDuration = endSeconds - startSeconds;
-        const elapsed = currentTotalSeconds - startSeconds;
-        const progress = Math.min((elapsed / totalDuration) * 100, 100);
-        const remaining = Math.max(totalDuration - elapsed, 0);
-
-        const nextIdx = (i + 1) % TIME_PERIODS.length;
-        const nextHour = TIME_PERIODS[nextIdx].start.h;
-        const nextMinute = TIME_PERIODS[nextIdx].start.m;
-
-        return {
-          type: "active",
-          period,
-          progress,
-          remainingSeconds: remaining,
-          totalSeconds: totalDuration,
-          nextSpawn: { h: nextHour, m: nextMinute },
-        };
-      }
-    }
-  }
-
-  // 대기 구간 체크
-  for (let i = 0; i < WAITING_PERIODS.length; i++) {
-    const period = WAITING_PERIODS[i];
-    const startSeconds = timeToSeconds(period.start.h, period.start.m);
-    const endSeconds = timeToSeconds(period.end.h, period.end.m);
-
-    if (
-      currentTotalSeconds >= startSeconds &&
-      currentTotalSeconds <= endSeconds
-    ) {
-      const totalDuration = endSeconds - startSeconds;
-      const elapsed = currentTotalSeconds - startSeconds;
-      const progress = Math.min((elapsed / totalDuration) * 100, 100);
-      const remaining = Math.max(totalDuration - elapsed, 0);
-
-      const nextHour = period.end.h;
-      const nextMinute = period.end.m;
-
-      return {
-        type: "waiting",
-        period,
-        progress,
-        remainingSeconds: remaining,
-        totalSeconds: totalDuration,
-        nextSpawn: { h: nextHour, m: nextMinute },
-      };
-    }
-  }
-
-  return null;
-}
-/** 현재시간과 프로그레스 바 표시 */
-export function tick() {
-  const now = new Date();
-  const timeInfo = getCurrentTimeInfo(now);
-
-  if (timeInfo) {
-    updateProgressDisplay(timeInfo);
-  } else {
-    const pad = (n) => String(n).padStart(2, "0");
-    $time.innerHTML = `<div class="time-display">${pad(now.getHours())}:${pad(
-      now.getMinutes(),
-    )}:${pad(now.getSeconds())}</div>`;
-  }
-}
-/** 프로그레스 바 UI 업데이트 */
-export function updateProgressDisplay(timeInfo) {
-  const { type, progress, remainingSeconds, nextSpawn } = timeInfo;
-  const hours = Math.floor(remainingSeconds / 3600);
-  const minutes = Math.floor((remainingSeconds % 3600) / 60);
-  const seconds = remainingSeconds % 60;
-  const timeRemaining =
-    hours > 0
-      ? `${hours}시간 ${minutes}분 ${seconds}초`
-      : minutes > 0
-        ? `${minutes}분 ${seconds}초`
-        : `${seconds}초`;
-
-  const progressBarClass =
-    type === "waiting" ? "progress-waiting" : "progress-active";
-
-  const pad = (n) => String(n).padStart(2, "0");
-  const nextHour = nextSpawn ? pad(nextSpawn.h) : "--";
-  const nextMinute = nextSpawn ? pad(nextSpawn.m) : "00";
-
-  $time.innerHTML = `
-    <div class="progress-container">
-      <div class="progress-info">
-        <div class="time-remaining">다음 출현 예정: ${nextHour}시${
-          nextMinute !== "00" ? nextMinute + "분" : ""
-        }</div>
-        <div class="time-remaining">${
-          type === "waiting" ? "다음 구매 시간" : "남은 구매 시간"
-        }: ${timeRemaining}</div>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill ${progressBarClass}" style="width: ${progress.toFixed(
-          2,
-        )}%"></div>
-        <div class="progress-text">${progress.toFixed(2)}%</div>
-      </div>
-    </div>
-  `;
-}
 /** MerchantList.json 로드 */
 export async function getMerchantData() {
   if (merchantDataCache) return merchantDataCache;
@@ -191,6 +32,31 @@ export async function getMerchantData() {
     console.error("Error loading MerchantList data:", e);
     return null;
   }
+}
+
+/** 모든 type=1 카드 로드 (자동완성용) */
+async function loadAllCardItems() {
+  if (allCardItems.length > 0) return allCardItems;
+  let data;
+  try {
+    const res = await fetch("MerchantList.json");
+    data = await res.json();
+  } catch (err) {
+    console.error("MerchantList.json 로드 실패", err);
+    return [];
+  }
+  const regions = data.initialData?.scheme?.regions || [];
+  const seen = new Set();
+  for (const region of regions) {
+    for (const item of region.items || []) {
+      if (item.type === 1 && !seen.has(item.name)) {
+        seen.add(item.name);
+        const setName = resolveSetNamesByItemName(item.name);
+        allCardItems.push({ id: item.id, name: item.name, setName });
+      }
+    }
+  }
+  return allCardItems;
 }
 
 //중요한 갱신 부분
@@ -237,23 +103,6 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;");
 }
 
-function getItemSetNameList(item) {
-  if (!item?.setName) return [];
-  return item.setName
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
-}
-
-function isSetFilterMatched(item) {
-  if (!Array.isArray(activeSetFilters) || activeSetFilters.length === 0) {
-    return true;
-  }
-  const setNameList = getItemSetNameList(item);
-  if (setNameList.length === 0) return false;
-  return setNameList.some((name) => activeSetFilters.includes(name));
-}
-
 function getCardSelectionKey(item) {
   return String(item?.id ?? "");
 }
@@ -275,135 +124,25 @@ function setCardSelected(item, selected) {
   }
 }
 
+function selectedCardsKey(server) {
+  return `${STORAGE_KEY_SELECTED_CARDS}_${server}`;
+}
+
 function saveSelectedCards() {
   return new Promise((resolve) => {
-    Storage.set({ [STORAGE_KEY_SELECTED_CARDS]: selectedCardIds }, resolve);
+    Storage.set(
+      { [selectedCardsKey(currentServer)]: selectedCardIds },
+      resolve,
+    );
   });
 }
 
 function updateSelectedCardCount(count) {
-  const $count = document.getElementById("selectedCardCount");
-  if ($count) {
-    if (activeSetFilters.length === 1) {
-      $count.textContent = `${activeSetFilters[0]}에 ${count}개`;
-    } else {
-      $count.textContent = `선택 ${count}개`;
-    }
-  }
+  const $cnt = document.querySelector(".fav-count");
+  if ($cnt) $cnt.textContent = String(count);
 }
 
-function updateSetFilterSummaryCount(count) {
-  const $summaryCount = document.querySelector(".set-filter-summary-count");
-  if ($summaryCount) {
-    $summaryCount.textContent = `${count}개`;
-  }
-}
-
-function renderSetFilterButtons() {
-  const $wrap = document.getElementById("setFilterButtons");
-  if (!$wrap) return;
-
-  const selectedCount = activeSetFilters.length;
-  const sortedSetNames = [...SET_NAME_TYPES].sort((a, b) => {
-    const aSelected = activeSetFilters.includes(a);
-    const bSelected = activeSetFilters.includes(b);
-    if (aSelected !== bSelected) return aSelected ? -1 : 1;
-    return a.localeCompare(b, "ko");
-  });
-  const summaryText =
-    selectedCount === 0
-      ? "전체"
-      : selectedCount === 1
-        ? activeSetFilters[0]
-        : `${activeSetFilters[0]} 외 ${selectedCount - 1}`;
-  const summaryCountText = `0개`;
-
-  const html = [
-    `<details class="set-filter-dropdown">
-      <summary class="set-filter-summary">
-        <span class="set-filter-summary-text">${escapeHtml(summaryText)}</span>
-        <span class="set-filter-summary-count">${summaryCountText}</span>
-      </summary>
-      <div class="set-filter-menu">
-        <label class="set-filter-item ${
-          activeSetFilters.length === 0 ? "is-active" : ""
-        }">
-          <input
-            type="checkbox"
-            class="set-filter-checkbox"
-            data-set-name=""
-            ${activeSetFilters.length === 0 ? "checked" : ""}
-          />
-          <span>전체</span>
-        </label>
-        ${sortedSetNames
-          .map(
-            (name) =>
-              `<label class="set-filter-item ${
-                activeSetFilters.includes(name) ? "is-active" : ""
-              }">
-              <input
-                type="checkbox"
-                class="set-filter-checkbox"
-                data-set-name="${escapeHtml(name)}"
-                ${activeSetFilters.includes(name) ? "checked" : ""}
-              />
-              <span>${escapeHtml(name)}</span>
-            </label>`,
-          )
-          .join("")}
-      </div>
-    </details>`,
-  ].join("");
-
-  $wrap.innerHTML = html;
-
-  $wrap.querySelectorAll(".set-filter-checkbox").forEach((checkbox) => {
-    checkbox.addEventListener("change", async (e) => {
-      const setName = e.target.dataset.setName || "";
-      const checked = !!e.target.checked;
-
-      if (!setName) {
-        if (checked) {
-          activeSetFilters = [];
-        } else {
-          activeSetFilters = [...SET_NAME_TYPES];
-        }
-      } else {
-        if (checked) {
-          if (!activeSetFilters.includes(setName)) {
-            activeSetFilters = [...activeSetFilters, setName];
-          }
-        } else {
-          activeSetFilters = activeSetFilters.filter((v) => v !== setName);
-        }
-
-        // 모든 타입이 선택되면 '전체'와 동일하게 취급
-        if (activeSetFilters.length === SET_NAME_TYPES.length) {
-          activeSetFilters = [];
-        }
-      }
-
-      await new Promise((resolve) => {
-        Storage.set({ [STORAGE_KEY_SET_FILTERS]: activeSetFilters }, resolve);
-      });
-
-      renderSetFilterButtons();
-      beforeReportIds = null;
-      refreshNow();
-    });
-  });
-}
-
-export function initSetNameFilter() {
-  Storage.get(STORAGE_KEY_SET_FILTERS, (st) => {
-    const saved = st[STORAGE_KEY_SET_FILTERS];
-    activeSetFilters = Array.isArray(saved)
-      ? saved.filter((v) => SET_NAME_TYPES.includes(v))
-      : [];
-    renderSetFilterButtons();
-  });
-}
+export function initSetNameFilter() {}
 
 function sortCardsBySelection(items) {
   return [...items].sort((a, b) => {
@@ -414,24 +153,51 @@ function sortCardsBySelection(items) {
   });
 }
 
-function renderCardItems(filteredItems) {
-  const orderedItems = sortCardsBySelection(filteredItems);
-  const selectedTotalCount = orderedItems.filter((item) =>
-    isCardSelected(item),
-  ).length;
-  const selectedScopedCount = orderedItems.filter(
-    (item) => isCardSelected(item) && isSetFilterMatched(item),
-  ).length;
+function applySearchAndTab(items) {
+  if (activeTab === "favorites") {
+    return items.filter((item) => isCardSelected(item));
+  }
+  return items;
+}
 
-  updateSelectedCardCount(
-    activeSetFilters.length > 0 ? selectedScopedCount : selectedTotalCount,
+function groupAndSortItems(items) {
+  const cards = sortCardsBySelection(items.filter((i) => i.type === 1));
+  const daily = sortCardsBySelection(items.filter((i) => i.type === 3));
+  const quest = sortCardsBySelection(items.filter((i) => i.type === 2));
+  const etc = sortCardsBySelection(
+    items.filter((i) => i.type !== 1 && i.type !== 2 && i.type !== 3),
   );
-  updateSetFilterSummaryCount(selectedScopedCount);
+  return [...cards, ...daily, ...quest, ...etc];
+}
+
+function renderCardItems(filteredItems) {
+  _lastFilteredItems = filteredItems;
+  const displayItems = applySearchAndTab(filteredItems);
+  const orderedItems = groupAndSortItems(displayItems);
+
+  updateSelectedCardCount(selectedCardIds.length);
   $list.innerHTML = "";
+
+  if (orderedItems.length === 0) {
+    const msg =
+      activeTab === "favorites" && selectedCardIds.length === 0
+        ? "즐겨찾기한 아이템이 없습니다"
+        : "현재 해당 아이템이 없습니다";
+    $list.innerHTML = `<div class="empty-state">${msg}</div>`;
+    return;
+  }
 
   for (let i = 0; i < orderedItems.length; i++) {
     const item = orderedItems[i];
     const selected = isCardSelected(item);
+    const typeLabel =
+      item.type === 1
+        ? "카드"
+        : item.type === 2
+          ? "퀘스트"
+          : item.type === 3
+            ? "내실"
+            : "";
     const card = document.createElement("button");
     card.type = "button";
     card.className = `card ${i}${selected ? " is-selected" : ""}`;
@@ -446,7 +212,10 @@ function renderCardItems(filteredItems) {
                 }</div>`
               : ""
           }
-          ${selected ? '<span class="card-selected-badge">선택됨</span>' : ""}
+          <div class="card-badges">
+            ${typeLabel ? `<span class="card-type-badge type-${item.type}">${typeLabel}</span>` : ""}
+            ${selected ? '<span class="card-selected-badge">⭐</span>' : ""}
+          </div>
         </div>
         ${
           item.regionName
@@ -459,7 +228,7 @@ function renderCardItems(filteredItems) {
     card.addEventListener("click", async () => {
       setCardSelected(item, !isCardSelected(item));
       await saveSelectedCards();
-      renderCardItems(filteredItems);
+      renderCardItems(_lastFilteredItems);
     });
 
     $list.appendChild(card);
@@ -494,9 +263,13 @@ export async function renderList(data) {
   const requireItems = [];
 
   for (const report of reports) {
-    for (const itemId of report.itemIds || []) {
+    const itemIds =
+      typeof report.itemIds === "string"
+        ? report.itemIds.split(" ").filter(Boolean)
+        : report.itemIds || [];
+    for (const itemId of itemIds) {
       const found = findItemInMerchantData(merchantData, itemId);
-      if (found && found.type === 1 && (found.grade === 4 || !!found.setName)) {
+      if (found) {
         requireItems.push({
           ...found,
           regionId: report.regionId,
@@ -510,9 +283,7 @@ export async function renderList(data) {
   const filteredItems = requireItems;
 
   if (filteredItems.length === 0) {
-    updateSelectedCardCount(0);
-    updateSetFilterSummaryCount(0);
-    $list.innerHTML = `<div class="empty-state">현재 카드가 없습니다</div>`;
+    $list.innerHTML = `<div class="empty-state">현재 아이템이 없습니다</div>`;
     return;
   }
 
@@ -528,13 +299,6 @@ export async function refreshNow() {
   }
 
   try {
-    const now = new Date();
-    const timeInfo = getCurrentTimeInfo(now);
-
-    if (timeInfo && timeInfo.type === "waiting") {
-      $list.innerHTML = `<div class="empty-state">현재는 다음 상인을 기다리고 있습니다</div>`;
-      return;
-    }
     const data = await fetchMerchant({
       server: currentServer,
       before: new Date().toISOString(),
@@ -557,7 +321,15 @@ export function setServerAndRefresh(server) {
   currentServer = server;
   document.getElementById("currentServerName").textContent =
     SERVER_NAMES[currentServer];
-  refreshNow();
+  const key = selectedCardsKey(currentServer);
+  Storage.get(key, (st) => {
+    const saved = st[key];
+    selectedCardIds = Array.isArray(saved)
+      ? saved.map((v) => String(v)).filter(Boolean)
+      : [];
+    updateSelectedCardCount(selectedCardIds.length);
+    refreshNow();
+  });
 }
 
 export function openServerList() {
@@ -571,23 +343,138 @@ export function openServerList() {
   }
 }
 
+export function initSearch() {
+  const $input = document.getElementById("cardSearch");
+  const $dropdown = document.getElementById("searchDropdown");
+  if (!$input || !$dropdown) return;
+
+  async function renderSearchDropdown() {
+    const q = $input.value.trim().toLowerCase();
+    const cards = await loadAllCardItems();
+    const filtered = q
+      ? cards.filter(
+          (c) =>
+            c.name.toLowerCase().includes(q) ||
+            (c.setName && c.setName.toLowerCase().includes(q)),
+        )
+      : cards;
+    if (filtered.length === 0) {
+      $dropdown.style.display = "none";
+      return;
+    }
+    $dropdown.innerHTML = filtered
+      .map((c) => {
+        const isFav = selectedCardIds.includes(String(c.id));
+        return `<div class="search-drop-item${isFav ? " is-fav" : ""}" data-id="${escapeHtml(c.id)}">
+          <span class="drop-item-name">${escapeHtml(c.name)}</span>
+          ${c.setName ? `<span class="drop-item-set">${escapeHtml(c.setName)}</span>` : ""}
+          <span class="drop-item-badge">${isFav ? "⭐" : "+"}</span>
+        </div>`;
+      })
+      .join("");
+    $dropdown.style.display = "block";
+    $dropdown.querySelectorAll(".search-drop-item").forEach((el) => {
+      el.addEventListener("mousedown", async (e) => {
+        e.preventDefault();
+        const id = String(el.dataset.id);
+        const isFav = selectedCardIds.includes(id);
+        if (isFav) {
+          selectedCardIds = selectedCardIds.filter((v) => v !== id);
+        } else {
+          selectedCardIds = [...selectedCardIds, id];
+        }
+        await saveSelectedCards();
+        updateSelectedCardCount(selectedCardIds.length);
+        renderCardItems(_lastFilteredItems);
+        renderSearchDropdown();
+        renderFavoritesDropdownContent();
+      });
+    });
+  }
+
+  $input.addEventListener("focus", renderSearchDropdown);
+  $input.addEventListener("input", renderSearchDropdown);
+  $input.addEventListener("blur", () => {
+    setTimeout(() => {
+      $dropdown.style.display = "none";
+    }, 150);
+  });
+}
+
+function renderFavoritesDropdownContent() {
+  const $drop = document.getElementById("favoritesDropdown");
+  if (!$drop || $drop.style.display === "none") return;
+  loadAllCardItems().then((cards) => {
+    if (selectedCardIds.length === 0) {
+      $drop.innerHTML = '<div class="fav-drop-empty">즐겨찾기가 없습니다</div>';
+      return;
+    }
+    $drop.innerHTML = selectedCardIds
+      .map((id) => {
+        const card = cards.find((c) => String(c.id) === id);
+        const name = card ? escapeHtml(card.name) : id;
+        return `<div class="fav-drop-item" data-id="${id}"><span>${name}</span><button class="fav-remove">✕</button></div>`;
+      })
+      .join("");
+    $drop.querySelectorAll(".fav-remove").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const id = String(btn.closest(".fav-drop-item").dataset.id);
+        selectedCardIds = selectedCardIds.filter((v) => v !== id);
+        await saveSelectedCards();
+        updateSelectedCardCount(selectedCardIds.length);
+        renderCardItems(_lastFilteredItems);
+        renderFavoritesDropdownContent();
+      });
+    });
+  });
+}
+
+export function initFavoritesDropdown() {
+  const $btn = document.getElementById("btnFavorites");
+  const $drop = document.getElementById("favoritesDropdown");
+  if (!$btn || !$drop) return;
+  $btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = $drop.style.display !== "none";
+    $drop.style.display = isOpen ? "none" : "block";
+    if (!isOpen) renderFavoritesDropdownContent();
+  });
+  document.addEventListener("click", (e) => {
+    if (!$btn.contains(e.target) && !$drop.contains(e.target)) {
+      $drop.style.display = "none";
+    }
+  });
+}
+
+export function initTabs() {
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      activeTab = btn.dataset.tab || "all";
+      document
+        .querySelectorAll(".tab-btn")
+        .forEach((b) => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      renderCardItems(_lastFilteredItems);
+    });
+  });
+}
+
 export function init() {
   initSetNameFilter();
-  Storage.get(STORAGE_KEY_SELECTED_CARDS, (st) => {
-    const saved = st[STORAGE_KEY_SELECTED_CARDS];
+  initSearch();
+  initTabs();
+  initFavoritesDropdown();
+  const _initKey = selectedCardsKey(currentServer);
+  Storage.get(_initKey, (st) => {
+    const saved = st[_initKey];
     selectedCardIds = Array.isArray(saved)
       ? saved.map((v) => String(v)).filter(Boolean)
       : [];
+    updateSelectedCardCount(selectedCardIds.length);
   });
-  updateSelectedCardCount(0);
-  updateSetFilterSummaryCount(0);
-  setInterval(tick, 16); // 60fps로 더 자주 호출
-  tick();
   $list.innerHTML = "";
-  // 서버명은 setServerAndRefresh에서 이미 표시됨
-  // refreshNow(); // 중복 호출 제거
-  /** 주기적 호출 */
-  setInterval(refreshNow, 1 * 60 * 1000); // 1분마다 호출
+  setInterval(refreshNow, 1 * 60 * 1000);
 }
 
 /* ===== 알림 ON/OFF 토글 ===== */

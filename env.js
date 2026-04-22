@@ -6,7 +6,7 @@ export function cacheDom() {
   $time = document.getElementById("currentTime");
   $btn = document.getElementById("btnRefresh");
   $list = document.getElementById("list");
-  $serverList = document.querySelector(".server-list");
+  $serverList = document.querySelector(".server-name-wrap .server-list");
   $currentServerName = document.getElementById("currentServerName");
 }
 

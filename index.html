@@ -11,46 +11,76 @@
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <div class="header-content">
-          <h1 class="header-title" style="position: relative">
-            <span id="currentServerName">아만</span>
+      <!-- 1. 알림 온오프 -->
+      <div class="notify-bar">
+        <span class="notify-label">윈도우 알림</span>
+        <label class="toggle-switch">
+          <input id="toggleNotify" type="checkbox" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
 
-            <div class="server-list" style="display: none; position: absolute">
-              <div id="1">루페온</div>
-              <div id="6">카마인</div>
-              <div id="4">아브렐슈드</div>
-              <div id="3">아만</div>
-              <div id="5">카단</div>
-              <div id="2">실리안</div>
-              <div id="7">카제로스</div>
-              <div id="8">니나브</div>
-            </div>
-          </h1>
+      <!-- 2. 서버 선택 -->
+      <div class="server-bar">
+        <div class="server-name-wrap">
+          <span class="server-label">서버</span>
+          <span id="currentServerName" class="server-name">아만</span>
+          <div class="server-list" style="display: none; position: absolute">
+            <div id="1">루페온</div>
+            <div id="6">카마인</div>
+            <div id="4">아브렐슈드</div>
+            <div id="3">아만</div>
+            <div id="5">카단</div>
+            <div id="2">실리안</div>
+            <div id="7">카제로스</div>
+            <div id="8">니나브</div>
+          </div>
         </div>
-
         <button id="btnRefresh" class="refresh-btn">
           <span class="refresh-text">갱신</span>
         </button>
       </div>
-      <div class="set-filter-panel">
-        <div class="set-filter-title">
-          세트 필터 <span id="selectedCardCount">선택 0개</span>
+
+      <!-- 2. 카드 검색 + 즐겨찾기 -->
+      <div class="search-section">
+        <div class="search-row">
+          <div class="search-bar">
+            <span class="search-icon">🔎</span>
+            <input
+              id="cardSearch"
+              type="text"
+              class="search-input"
+              placeholder=""
+              autocomplete="off"
+            />
+          </div>
+          <div class="fav-wrap">
+            <button id="btnFavorites" class="fav-btn">
+              ⭐ <span class="fav-count">0</span> ▾
+            </button>
+            <div
+              id="favoritesDropdown"
+              class="fav-dropdown"
+              style="display: none"
+            ></div>
+          </div>
         </div>
-        <div id="setFilterButtons" class="set-filter-buttons"></div>
-      </div>
-      <!-- 윈도우 알림 토글 -->
-      <div class="notify-toggle">
-        <label for="toggleNotify">윈도우 알림</label>
-        <input id="toggleNotify" type="checkbox" />
-      </div>
-      <div class="time-section">
-        <div id="currentTime"></div>
+        <div
+          id="searchDropdown"
+          class="search-dropdown"
+          style="display: none"
+        ></div>
       </div>
 
+      <!-- 3. 탭 (전체 / 카드 / 퀘스트 / 내실 / 즐겨찾기) -->
+      <div class="tab-bar">
+        <button class="tab-btn is-active" data-tab="all">전체</button>
+        <button class="tab-btn" data-tab="favorites">⭐ 즐겨찾기</button>
+      </div>
+
+      <!-- 5. 카드 목록 -->
       <div id="list" class="card-list"></div>
     </div>
-
     <script type="module" src="popup.js"></script>
   </body>
 </html>

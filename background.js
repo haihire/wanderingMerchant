@@ -137,7 +137,11 @@ async function fetchAndProcessMerchantData() {
   const hits = [];
   if (reports && reports.length > 0) {
     for (const report of reports) {
-      for (const itemId of report.itemIds || []) {
+      const itemIds =
+        typeof report.itemIds === "string"
+          ? report.itemIds.split(" ").filter(Boolean)
+          : report.itemIds || [];
+      for (const itemId of itemIds) {
         const found = findItemInMerchantData(merchantData, itemId);
         if (
           found &&
