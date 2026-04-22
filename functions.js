@@ -252,6 +252,19 @@ export async function renderList(data) {
   const reportIds = reports ? reports.map((r) => r.id).join(",") : "";
   if (beforeReportIds === reportIds) return;
 
+  // 종료 시각 표시
+  const $endTime = document.getElementById("sessionEndTime");
+  if ($endTime) {
+    if (currentSession?.endTime) {
+      const end = new Date(currentSession.endTime);
+      const hh = String(end.getHours()).padStart(2, "0");
+      const mm = String(end.getMinutes()).padStart(2, "0");
+      $endTime.textContent = `~${hh}:${mm}`;
+    } else {
+      $endTime.textContent = "";
+    }
+  }
+
   //reports
   if (!reports || reports.length === 0) {
     $list.innerHTML = `<div class="empty-state">현재 데이터를 수집중입니다.</div>`;
