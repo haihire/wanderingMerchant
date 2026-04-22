@@ -11,6 +11,7 @@ import {
   TIME_PERIODS,
   WAITING_PERIODS,
 } from "./env.js";
+import { resolveSetNamesByItemName } from "./setNameMap.js";
 // 변경상수들은 여기서
 let merchantDataCache = null;
 let beforeReportIds = null;
@@ -28,7 +29,7 @@ export function getCurrentTimeInfo(now) {
   const currentTotalSeconds = timeToSeconds(
     currentHour,
     currentMinute,
-    currentSecond
+    currentSecond,
   );
 
   // 활동 구간 체크
@@ -130,7 +131,7 @@ export function tick() {
   } else {
     const pad = (n) => String(n).padStart(2, "0");
     $time.innerHTML = `<div class="time-display">${pad(now.getHours())}:${pad(
-      now.getMinutes()
+      now.getMinutes(),
     )}:${pad(now.getSeconds())}</div>`;
   }
 }
@@ -144,8 +145,8 @@ export function updateProgressDisplay(timeInfo) {
     hours > 0
       ? `${hours}시간 ${minutes}분 ${seconds}초`
       : minutes > 0
-      ? `${minutes}분 ${seconds}초`
-      : `${seconds}초`;
+        ? `${minutes}분 ${seconds}초`
+        : `${seconds}초`;
 
   const progressBarClass =
     type === "waiting" ? "progress-waiting" : "progress-active";
@@ -158,16 +159,16 @@ export function updateProgressDisplay(timeInfo) {
     <div class="progress-container">
       <div class="progress-info">
         <div class="time-remaining">다음 출현 예정: ${nextHour}시${
-    nextMinute !== "00" ? nextMinute + "분" : ""
-  }</div>
+          nextMinute !== "00" ? nextMinute + "분" : ""
+        }</div>
         <div class="time-remaining">${
           type === "waiting" ? "다음 구매 시간" : "남은 구매 시간"
         }: ${timeRemaining}</div>
       </div>
       <div class="progress-bar">
         <div class="progress-fill ${progressBarClass}" style="width: ${progress.toFixed(
-    2
-  )}%"></div>
+          2,
+        )}%"></div>
         <div class="progress-text">${progress.toFixed(2)}%</div>
       </div>
     </div>
@@ -213,7 +214,13 @@ function findItemInMerchantData(merchantData, itemId) {
   for (const region of regions) {
     for (const item of region.items || []) {
       if (item.id === itemId) {
-        return { ...item, regionName: region.name, npcName: region.npcName };
+        const setName = item.setName || resolveSetNamesByItemName(item.name);
+        return {
+          ...item,
+          setName,
+          regionName: region.name,
+          npcName: region.npcName,
+        };
       }
     }
   }
@@ -248,14 +255,14 @@ export async function renderList(data) {
     return;
   }
   beforeReportIds = reportIds;
-  // 전설 카드 필터링
+  // 전설 카드 또는 세트 매칭 카드 필터링
   const merchantData = await getMerchantData(merchantDataCache);
   const requireItems = [];
 
   for (const report of reports) {
     for (const itemId of report.itemIds || []) {
       const found = findItemInMerchantData(merchantData, itemId);
-      if (found && found.type === 1 && found.grade === 4) {
+      if (found && found.type === 1 && (found.grade === 4 || !!found.setName)) {
         requireItems.push({
           ...found,
           regionId: report.regionId,
@@ -267,7 +274,7 @@ export async function renderList(data) {
   }
 
   if (requireItems.length === 0) {
-    $list.innerHTML = `<div class="empty-state">현재 전설 카드가 출현하지 않았습니다</div>`;
+    $list.innerHTML = `<div class="empty-state">현재 전설/세트 카드가 출현하지 않았습니다</div>`;
     return;
   }
 
