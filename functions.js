@@ -485,6 +485,12 @@ export function init() {
       ? saved.map((v) => String(v)).filter(Boolean)
       : [];
     updateSelectedCardCount(selectedCardIds.length);
+    if (selectedCardIds.length > 0) {
+      activeTab = "favorites";
+      document.querySelectorAll(".tab-btn").forEach((b) => {
+        b.classList.toggle("is-active", b.dataset.tab === "favorites");
+      });
+    }
   });
   $list.innerHTML = "";
   setInterval(refreshNow, 1 * 60 * 1000);

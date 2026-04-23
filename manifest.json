@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "로아 떠상",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "로스트아크의 떠돌이 상인에서 전설 카드가 떴을 때의 알림이나 현재 나와있는 전설 카드를 알려줍니다. 서버선택 기능 추가.",
   "action": {
     "default_title": "로아 떠상",
