@@ -7,6 +7,7 @@ import {
   Storage,
   STORAGE_KEY_NOTIFY,
   STORAGE_KEY_SELECTED_CARDS,
+  STORAGE_KEY_ACTIVE_TAB,
   SERVER_NAMES,
 } from "./env.js";
 import { resolveSetNamesByItemName } from "./setNameMap.js";
@@ -149,6 +150,8 @@ function sortCardsBySelection(items) {
     const aSelected = isCardSelected(a);
     const bSelected = isCardSelected(b);
     if (aSelected !== bSelected) return aSelected ? -1 : 1;
+    const gradeDiff = (b.grade ?? 0) - (a.grade ?? 0);
+    if (gradeDiff !== 0) return gradeDiff;
     return String(a.name || "").localeCompare(String(b.name || ""), "ko");
   });
 }
@@ -198,9 +201,10 @@ function renderCardItems(filteredItems) {
           : item.type === 3
             ? "내실"
             : "";
+    const gradeClass = `grade-${item.grade ?? 0}`;
     const card = document.createElement("button");
     card.type = "button";
-    card.className = `card ${i}${selected ? " is-selected" : ""}`;
+    card.className = `card ${gradeClass}${selected ? " is-selected" : ""}`;
     card.setAttribute("aria-pressed", selected ? "true" : "false");
     card.innerHTML = `
       <div class="card-content">
@@ -464,6 +468,7 @@ export function initTabs() {
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       activeTab = btn.dataset.tab || "all";
+      Storage.set({ [STORAGE_KEY_ACTIVE_TAB]: activeTab });
       document
         .querySelectorAll(".tab-btn")
         .forEach((b) => b.classList.remove("is-active"));
@@ -479,18 +484,17 @@ export function init() {
   initTabs();
   initFavoritesDropdown();
   const _initKey = selectedCardsKey(currentServer);
-  Storage.get(_initKey, (st) => {
+  Storage.get([_initKey, STORAGE_KEY_ACTIVE_TAB], (st) => {
     const saved = st[_initKey];
     selectedCardIds = Array.isArray(saved)
       ? saved.map((v) => String(v)).filter(Boolean)
       : [];
     updateSelectedCardCount(selectedCardIds.length);
-    if (selectedCardIds.length > 0) {
-      activeTab = "favorites";
-      document.querySelectorAll(".tab-btn").forEach((b) => {
-        b.classList.toggle("is-active", b.dataset.tab === "favorites");
-      });
-    }
+    const savedTab = st[STORAGE_KEY_ACTIVE_TAB] || "all";
+    activeTab = savedTab;
+    document.querySelectorAll(".tab-btn").forEach((b) => {
+      b.classList.toggle("is-active", b.dataset.tab === activeTab);
+    });
   });
   $list.innerHTML = "";
   setInterval(refreshNow, 1 * 60 * 1000);
@@ -503,7 +507,7 @@ export function initNotifyToggle() {
 
   Storage.get(STORAGE_KEY_NOTIFY, (st) => {
     const enabled = st[STORAGE_KEY_NOTIFY];
-    $toggle.checked = enabled !== false; // 기본 ON
+    $toggle.checked = enabled === true; // 기본 OFF
   });
 
   $toggle.addEventListener("change", (e) => {

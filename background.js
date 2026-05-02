@@ -135,6 +135,14 @@ async function fetchAndProcessMerchantData() {
 
   const reports = currentSession ? currentSession.reports : [];
   const hits = [];
+  // 서버별 즐겨찾기 로드
+  const favKey = `selectedCards_${server}`;
+  const favSt = await chrome.storage.local.get(favKey);
+  const selectedCardIds = Array.isArray(favSt[favKey])
+    ? favSt[favKey].map(String)
+    : [];
+  const useFavFilter = selectedCardIds.length > 0;
+
   if (reports && reports.length > 0) {
     for (const report of reports) {
       const itemIds =
@@ -143,11 +151,11 @@ async function fetchAndProcessMerchantData() {
           : report.itemIds || [];
       for (const itemId of itemIds) {
         const found = findItemInMerchantData(merchantData, itemId);
-        if (
-          found &&
-          found.type === 1 &&
-          (found.grade === 4 || !!found.setName)
-        ) {
+        if (!found) continue;
+        const matchFav = useFavFilter
+          ? selectedCardIds.includes(String(found.id))
+          : true;
+        if (matchFav) {
           hits.push({
             ...found,
             uniqueId: `${report.id}-${found.id}`,
@@ -270,22 +278,38 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 function notifyUser(hits) {
   if (!Array.isArray(hits) || hits.length === 0) return;
 
-  console.log(
-    `%c[${new Date().toLocaleTimeString()}] *** 새로운 카드 ${
-      hits.length
-    }개 발견! 알림 생성. ***`,
-    "color: #007bff; font-weight: bold;",
-  );
-  const title = "떠돌이 상인 윈도우 알림";
-  const msg = hits
-    .map((hit) => `${hit.name} - 지역: ${hit.regionName}`)
-    .join("\n");
+  const GRADE_LABELS = {
+    5: "에스더",
+    4: "전설",
+    3: "영웅",
+    2: "희귀",
+    1: "고급",
+    0: "일반",
+  };
+  const GRADE_ORDER = [5, 4, 3, 2, 1, 0];
+
+  const groups = {};
+  for (const hit of hits) {
+    const g = hit.grade ?? 0;
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(hit);
+  }
+
+  const lines = [];
+  for (const g of GRADE_ORDER) {
+    if (!groups[g]) continue;
+    const label = GRADE_LABELS[g] || `등급${g}`;
+    lines.push(`[${label}]`);
+    for (const hit of groups[g]) {
+      lines.push(`  ${hit.name} - ${hit.regionName}`);
+    }
+  }
 
   chrome.notifications.create(`notification_${Date.now()}`, {
     type: "basic",
     iconUrl: "icons/icon_128.png",
-    title: title,
-    message: msg,
+    title: "떠돌이 상인 알림",
+    message: lines.join("\n"),
     priority: 2,
   });
 }
@@ -363,7 +387,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   );
   const st = await chrome.storage.local.get(STORAGE_KEY_NOTIFY);
   if (typeof st[STORAGE_KEY_NOTIFY] === "undefined") {
-    await chrome.storage.local.set({ [STORAGE_KEY_NOTIFY]: true });
+    await chrome.storage.local.set({ [STORAGE_KEY_NOTIFY]: false });
     // 알림 설정이 없어서 새로 저장한 경우에는 여기서 알람 예약하지 않음
     // storage.onChanged에서 자동으로 예약됨
   } else {
